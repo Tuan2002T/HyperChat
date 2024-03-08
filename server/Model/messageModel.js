@@ -3,22 +3,22 @@ const mongoose = require('mongoose');
 const messageSchema = new mongoose.Schema({
     content: {
         type: String,
-        required: true
     },
     sender: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        ref: 'User',
         required: true
     },
     chatType: {
         type: String,
-        enum: ["user", "group"],
+        enum: ['user', 'group'],
         required: true
     },
     chatId: {
         type: mongoose.Schema.Types.ObjectId,
     },
-    attachments: [{type: String}],
+    fileType: [{ type: String }],
+    fileUrl: [{ type: String }],
 }, {
     timestamps: true
 });

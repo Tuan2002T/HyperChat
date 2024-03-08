@@ -1,6 +1,6 @@
 const chatGroupModel = require("../Model/chatGroupModel");
-const mongoose = require("mongoose");
-const ObjectId = mongoose.Types.ObjectId;
+const userModel = require("../Model/userModel");
+
 const createChatGroup = async (req, res) => {
 
     const  {groupName, members} = req.body;
@@ -62,4 +62,50 @@ const addMemberToChatGroup = async (req, res) => {
     }
 }
 
-module.exports = { createChatGroup, getChatGroupById, addMemberToChatGroup };
+const deleteUserChatGroup = async (req, res) => {
+    const { chatGroupId, userId } = req.body;
+    try {
+        const chatGroup = await chatGroupModel.findById(chatGroupId);
+        if (!chatGroup.members.includes(userId)) {
+            return res.status(400).json({ message: "Người dùng không phải là thành viên của nhóm chat." });
+        }
+
+        chatGroup.members = chatGroup.members.filter(memberId => memberId.toString() !== userId);
+        const updatedChatGroup = await chatGroup.save();
+        res.status(200).json(updatedChatGroup);
+
+    } catch (error) {
+        console.log('Xoá người dùng khỏi nhóm chat không thành công', error);
+        res.status(404).json({ message: error.message });
+    }
+}
+        
+const deleteChatGroup = async (req, res) => {
+    try {
+        const deletedChatGroup = await chatGroupModel.findByIdAndDelete(req.params.idChatGroup);
+
+        if (!deletedChatGroup) {
+            return res.status(404).json({ message: "Không tìm thấy nhóm chat để xóa." });
+        }
+
+        res.status(200).json({ message: "Nhóm chat đã được xóa thành công." });
+    } catch (error) {
+        console.error('Lỗi khi xóa nhóm chat:', error);
+        res.status(500).json({ message: "Đã xảy ra lỗi khi xóa nhóm chat." });
+    }
+};     
+
+// const deleteChatGroup = async (req, res) => {
+//     try {
+//         const chatGroup = await chatGroupModel.findByIdAndDelete(req.params.id);
+//         if (!chatGroup) {
+//             return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
+//         }
+//         res.status(200).json(chatGroup);
+//     }
+//     catch (error) {
+//         console.log('Lỗi tìm chatgroup', error);
+//         res.status(404).json({ message: error.message });
+//     }
+// }
+module.exports = { createChatGroup, getChatGroupById, addMemberToChatGroup, deleteUserChatGroup, deleteChatGroup};
