@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require("mongoose");
+
+
+
 const userRoute = require("./Routes/userRoute");
 const chatGroupRoute = require("./Routes/chatGroupRoute");
 const chatPrivateRoute = require("./Routes/chatPrivateRoute");
@@ -33,3 +36,5 @@ mongoose.connect(uri,{
 app.get("/", (req, res) => {
     res.send("Welcome to HyperChat...!");
 });
+
+

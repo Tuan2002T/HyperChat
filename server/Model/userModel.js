@@ -25,17 +25,14 @@ const userSchema = new mongoose.Schema({
     fullname: {
         type: String,
     },
-    friends: {
-        type: Array,
-        default: []
-    },
+    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     groups: {
         type: Array,
         default: []
     },
     avatar: {
         type: String,
-        default: "https://st.quantrimang.com/photos/image/072015/22/avatar.jpg"
+        default: "https://hyperchatimg.s3.ap-southeast-1.amazonaws.com/default_image.jpg"
     }
 
 }
