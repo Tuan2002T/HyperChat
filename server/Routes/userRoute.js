@@ -1,11 +1,12 @@
 const express = require('express');
-const { registerUser, getUsers, loginUser, findUser, findUserByPhoneNumber, updateUser, upload, sendFriendInvitations, acceptFriendInvitations, deleteFriend, getFriendsByUserId, findFriend } = require('../Controller/userController');
+const {  getUsers, loginUser, findUser, findUserByPhoneNumber, updateUser, upload, sendFriendInvitations, acceptFriendInvitations, deleteFriend, getFriendsByUserId, findFriend, sendOTP, verifyOTPAndRegister } = require('../Controller/userController');
 
 
 
 const router = express.Router();
 
-router.post("/register", registerUser);
+router.post("/register/send-otp", sendOTP);
+router.post("/register/verifyOTP", verifyOTPAndRegister);
 router.post("/login", loginUser);
 router.get("/id/:userId", findUser);
 router.get("/phone/:phoneNumber", findUserByPhoneNumber);

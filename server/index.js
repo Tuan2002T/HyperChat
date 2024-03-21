@@ -34,7 +34,14 @@ mongoose.connect(uri,{
 }).then(() => {console.log("Database connected...")}).catch((err) => console.log("MongdoDB connection failed: ",err.message));
 
 app.get("/", (req, res) => {
+    console.log("Welcome to HyperChat...!",req.session);
     res.send("Welcome to HyperChat...!");
 });
+const session = require("express-session");
+app.use(session({
+    secret: 'your-secret-key',
+    resave: false,
+    saveUninitialized: true,
+  }));
 
-
+module.exports = {session};

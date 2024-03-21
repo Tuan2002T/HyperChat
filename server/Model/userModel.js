@@ -25,7 +25,6 @@ const userSchema = new mongoose.Schema({
     fullname: {
         type: String,
     },
-    friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     groups: {
         type: Array,
         default: []
