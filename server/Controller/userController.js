@@ -15,6 +15,15 @@ const saveRegister = {
     birthday:"",
     otp:"",
 }
+//Redis
+const redis = require('redis');
+const redisClient = redis.createClient();
+
+redisClient.on('error', (err) => {
+  console.log('Redis Client Error', err);
+});
+
+redisClient.connect();
 //OTP Gmail
 const nodeMailer = require("nodemailer");
 // Khởi tạo transporter cho nodemailer
@@ -160,7 +169,9 @@ const sendOTP = async (req, res) => {
             subject: 'Your OTP Code',
             html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr).replace('{{fullname}}', fullname)
         };
-        // Lưu mã OTP vào session
+        // Lưu mã OTP vào redis
+        const registrationData = { userName, password, fullname, email, phoneNumber, birthday, otp };
+        await redisClient.set(email, JSON.stringify(registrationData));
         // req.session.userInfo = req.body;
         saveRegister.userName = userName;
         saveRegister.password = password;
@@ -189,17 +200,14 @@ const sendOTP = async (req, res) => {
 
 const verifyOTPAndRegister = async (req, res) => {
     try {
-        const { userName, password, fullname, email, phoneNumber, birthday } = saveRegister;
-        const { userOTP } = req.body;
-        const otp = saveRegister.otp;
-        console.log("saveRegister",otp);
-        console.log(userOTP);
-        
+        const { email, userOTP } = req.body;
+        const registrationData = await redisClient.get(email);
+        const { userName, password, fullname, phoneNumber, birthday, otp } = JSON.parse(registrationData);
+        console.log(otp);
         // Xác minh mã OTP
         if (!userOTP) return res.status(400).json({ error: "Vui lòng nhập mã OTP." });
 
         if (userOTP !== otp.toString()) return res.status(400).json({ error: "Mã OTP không chính xác." });
-
         user = new userModel({ userName, password, email, phoneNumber, fullname, birthday });
 
         const salt = await bcrypt.genSalt(10);
