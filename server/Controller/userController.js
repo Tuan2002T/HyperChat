@@ -5,16 +5,7 @@ const jwt = require("jsonwebtoken");
 const validator = require("validator");
 const dotenv = require('dotenv');
 dotenv.config();
-//Session lưu mã OTP
-const saveRegister = {
-    userName:"",
-    password:"",
-    fullname:"",
-    email:"",
-    phoneNumber:"",
-    birthday:"",
-    otp:"",
-}
+
 //Redis
 const redis = require('redis');
 const redisClient = redis.createClient();
@@ -172,14 +163,6 @@ const sendOTP = async (req, res) => {
         // Lưu mã OTP vào redis
         const registrationData = { userName, password, fullname, email, phoneNumber, birthday, otp };
         await redisClient.set(email, JSON.stringify(registrationData));
-        // req.session.userInfo = req.body;
-        saveRegister.userName = userName;
-        saveRegister.password = password;
-        saveRegister.fullname = fullname;
-        saveRegister.email = email;
-        saveRegister.phoneNumber = phoneNumber;
-        saveRegister.birthday = birthday;
-        saveRegister.otp = otp;
         // Gửi email
         console.log(saveRegister);
         transporter.sendMail(mailOptions, (error, info) => {
