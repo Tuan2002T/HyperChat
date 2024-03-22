@@ -164,7 +164,6 @@ const sendOTP = async (req, res) => {
         const registrationData = { userName, password, fullname, email, phoneNumber, birthday, otp };
         await redisClient.set(email, JSON.stringify(registrationData));
         // Gửi email
-        console.log(saveRegister);
         transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.log(error);
