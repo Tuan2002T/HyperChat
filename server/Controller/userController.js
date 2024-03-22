@@ -12,6 +12,7 @@ const saveRegister = {
     fullname:"",
     email:"",
     phoneNumber:"",
+    birthday:"",
     otp:"",
 }
 //OTP Gmail
@@ -129,7 +130,7 @@ const createToken = (_id) => {
 // }
 const sendOTP = async (req, res) => {
     try {
-        const { userName, password, fullname, email, phoneNumber } = req.body;
+        const { userName, password, fullname, email, phoneNumber, birthday } = req.body;
 
         let user = await userModel.findOne({ $or: [{ email }, { userName }] });
 
@@ -141,7 +142,7 @@ const sendOTP = async (req, res) => {
 
         if (user) return res.status(400).json({ error: "Số điện thoại đã tồn tại." });
 
-        if (!userName || !password || !email || !fullname) return res.status(400).json({ error: "Bắt buộc nhập đầy đủ thông tin." });
+        if (!userName || !password || !email || !fullname || !birthday ) return res.status(400).json({ error: "Bắt buộc nhập đầy đủ thông tin." });
 
         if (!validator.isStrongPassword(password)) return res.status(400).json({ error: "Mật khẩu không đủ mạnh." });
 
@@ -157,7 +158,7 @@ const sendOTP = async (req, res) => {
             from: 'truongtuan2422@gmail.com',
             to: email,
             subject: 'Your OTP Code',
-            html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr)
+            html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr).replace('{{fullname}}', fullname)
         };
         // Lưu mã OTP vào session
         // req.session.userInfo = req.body;
@@ -166,6 +167,7 @@ const sendOTP = async (req, res) => {
         saveRegister.fullname = fullname;
         saveRegister.email = email;
         saveRegister.phoneNumber = phoneNumber;
+        saveRegister.birthday = birthday;
         saveRegister.otp = otp;
         // Gửi email
         console.log(saveRegister);
@@ -187,7 +189,7 @@ const sendOTP = async (req, res) => {
 
 const verifyOTPAndRegister = async (req, res) => {
     try {
-        const { userName, password, fullname, email, phoneNumber } = saveRegister;
+        const { userName, password, fullname, email, phoneNumber, birthday } = saveRegister;
         const { userOTP } = req.body;
         const otp = saveRegister.otp;
         console.log("saveRegister",otp);
@@ -198,7 +200,7 @@ const verifyOTPAndRegister = async (req, res) => {
 
         if (userOTP !== otp.toString()) return res.status(400).json({ error: "Mã OTP không chính xác." });
 
-        user = new userModel({ userName, password, email, phoneNumber, fullname });
+        user = new userModel({ userName, password, email, phoneNumber, fullname, birthday });
 
         const salt = await bcrypt.genSalt(10);
 
@@ -208,7 +210,7 @@ const verifyOTPAndRegister = async (req, res) => {
 
         const token = createToken(user._id);
 
-        res.status(200).json({ _id: user._id, user: userName, password, email, phoneNumber, fullname, token });
+        res.status(200).json({ _id: user._id, user: userName, password, email, phoneNumber, fullname,birthday, token });
     } catch (error) {
         console.log("Error: ", error);
         res.status(500).json({ error: "Lỗi server." });

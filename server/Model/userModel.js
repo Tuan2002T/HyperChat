@@ -25,9 +25,8 @@ const userSchema = new mongoose.Schema({
     fullname: {
         type: String,
     },
-    groups: {
-        type: Array,
-        default: []
+    birthday: {
+        type: Date,
     },
     avatar: {
         type: String,
