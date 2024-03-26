@@ -209,21 +209,36 @@ const verifyOTPAndRegister = async (req, res) => {
 
 const loginUser = async (req, res) => {
     try {
-        const { phoneNumber, password } = req.body;
-        let user = await userModel
-            .findOne({ phoneNumber })
-        if (!user) return res.status(400).json({ error: "Số điện thoại không tồn tại." });
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) return res.status(400).json({ error: "Mật khẩu không đúng." });
-        const token = createToken(user._id);
-        res.status(200).json({ _id: user._id, user: user.userName, phoneNumber, token });
-        console.log("Đăng nhập thành công.");
+      const { account, password } = req.body;
+      let user = await userModel.findOne({
+        $or: [
+          { userName: account },
+          { email: account },
+          { phoneNumber: account },
+        ],
+      });
+  
+      if (!user)
+        return res.status(400).json({ error: "Thông tin đăng nhập không hợp lệ." });
+  
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch)
+        return res.status(400).json({ error: "Mật khẩu không đúng." });
+  
+      const token = createToken(user._id);
+      res.status(200).json({
+        _id: user._id,
+        user: user.userName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        token,
+      });
+      console.log("Đăng nhập thành công.");
+    } catch (error) {
+      console.log("Error: ", error);
+      res.status(500).json({ error: "Lỗi server." });
     }
-    catch (error) {
-        console.log("Error: ", error);
-        res.status(500).json({ error: "Lỗi server." });
-    }
-}
+  };
 
 const getUsers = async (req, res) => {
     try {
