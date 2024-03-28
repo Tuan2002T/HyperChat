@@ -2,18 +2,31 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const chatGroupSchema = new mongoose.Schema({
-    groupName: {
+    admin: [{
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true
+    }],
+    name: {
         type: String,
         required: true,
         unique: true,
         trim: true
     },
-    members: {
-        type: Array,
-    },
+    members: [{
+        type: Schema.Types.ObjectId,
+        ref: "User"
+    }],
+    messages: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: "Message",
+            default: []
+        }
+    ],
     avatar: {
         type: String,
-        default: "https://st.quantrimang.com/photos/image/072015/22/avatar.jpg"
+        default: "https://hyperchatimage.s3.ap-southeast-1.amazonaws.com/avatar-group.png"
     }
 }, {
     timestamps: true

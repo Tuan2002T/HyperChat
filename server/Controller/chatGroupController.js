@@ -3,17 +3,21 @@ const userModel = require("../Model/userModel");
 
 const createChatGroup = async (req, res) => {
 
-    const  {groupName, members} = req.body;
+    const  {admin, name, members} = req.body;
     try {
-        const chatGroup = await chatGroupModel.findOne({ groupName });
-        if (chatGroup) {
-            return res.status(400).json({ message: "Nhóm chat đã tồn tại" });
+        if (!admin || !name || !members) {
+            return res.status(400).json({ message: "Cần nhập đầy đủ thông tin" });
         }
 
-        const newChatGroup = new chatGroupModel({groupName, members});
+
+        const newChatGroup = new chatGroupModel({
+            admin, name, members       
+        });
 
         const savedChatGroup = await newChatGroup.save();
-
+        members.forEach(async (memberId) => {
+            await userModel.findByIdAndUpdate(memberId, { $push: { chatGroups: savedChatGroup._id } });
+        });
         
         res.status(200).json(savedChatGroup);
     } catch (error) {
@@ -24,37 +28,39 @@ const createChatGroup = async (req, res) => {
     }
 };
 
-const getChatGroupById = async (req, res) => {
+const getAllChatGroupByUserId = async (req, res) => {
     try {
-        const chatGroup = await chatGroupModel.findById(req.params.id);
+        const userId = req.params.userId;
+        const chatGroup = await userModel.findById(userId).populate('chatGroups', 'name members admin messages');
         if (!chatGroup) {
             return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
         }
-        res.status(200).json(chatGroup);
+        res.status(200).json(chatGroup.chatGroups);
     } catch (error) {
         console.log('Lỗi tìm chatgroup', error);
         res.status(404).json({ message: error.message });
     }
 };
 
-const addMemberToChatGroup = async (req, res) => {
-    const { chatGroupId, userId } = req.body;
+const addMembersToChatGroup = async (req, res) => {
     try {
+        const { chatGroupId, members } = req.body;
+        if (!chatGroupId || !members) { 
+            return res.status(400).json({ message: "Cần nhập đầy đủ thông tin" });
+        }
         const chatGroup = await chatGroupModel.findById(chatGroupId);
         if (!chatGroup) {
             return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
         }
-
-        if(chatGroup.members.includes(userId)){
-            return res.status(400).json({message: "Người dùng đã tồn tại trong nhóm chat"});
-        }
-        chatGroup.members.push(userId);
-
-
-
-        const updatedChatGroup = await chatGroup.save();
-
-        res.status(200).json(updatedChatGroup);
+        members.forEach(async (memberId) => {
+            if (chatGroup.members.includes(memberId)) {
+                return res.status(400).json({ message: "Một trong các người dùng đã tồn tại trong nhóm chat" });
+            }    
+            await userModel.findByIdAndUpdate(memberId, { $push: { chatGroups: chatGroupId } })
+        });
+        chatGroup.members.push(...members);
+        await chatGroup.save();
+        res.status(200).json(chatGroup);
     }
     catch (error) {
         console.log('Lỗi tìm chatgroup', error);
@@ -62,17 +68,25 @@ const addMemberToChatGroup = async (req, res) => {
     }
 }
 
-const deleteUserChatGroup = async (req, res) => {
-    const { chatGroupId, userId } = req.body;
+const deleteMembersChatGroup = async (req, res) => {
     try {
+        const { admin, members} = req.body;
+        const chatGroupId = req.params.chatGroupId;
         const chatGroup = await chatGroupModel.findById(chatGroupId);
-        if (!chatGroup.members.includes(userId)) {
-            return res.status(400).json({ message: "Người dùng không phải là thành viên của nhóm chat." });
+        let checkAdmin = chatGroup.admin.filter(adminId => adminId.toString() === admin);
+        if (!chatGroup) {
+            return res.status(404).json({ message: "Không tìm thấy nhóm chat." });
         }
-
-        chatGroup.members = chatGroup.members.filter(memberId => memberId.toString() !== userId);
-        const updatedChatGroup = await chatGroup.save();
-        res.status(200).json(updatedChatGroup);
+        if (checkAdmin.length === 0) {
+            return res.status(400).json({ message: "Bạn không phải là admin của nhóm chat." });
+        }
+        const updateMember = chatGroup.members.filter(memberId => !members.includes(memberId.toString()));
+        chatGroup.members = updateMember;
+        await chatGroup.save();
+        await userModel.findByIdAndUpdate(members, { $pull: { chatGroups: chatGroupId } });
+        
+        // await chatGroup.save();
+        res.status(200).json(chatGroup);
 
     } catch (error) {
         console.log('Xoá người dùng khỏi nhóm chat không thành công', error);
@@ -82,30 +96,43 @@ const deleteUserChatGroup = async (req, res) => {
         
 const deleteChatGroup = async (req, res) => {
     try {
-        const deletedChatGroup = await chatGroupModel.findByIdAndDelete(req.params.idChatGroup);
-
-        if (!deletedChatGroup) {
-            return res.status(404).json({ message: "Không tìm thấy nhóm chat để xóa." });
+        const {admin, chatGroup} = req.body;
+        const deleteChatGroup = await chatGroupModel.findById(chatGroup);
+        let checkAdmin = deleteChatGroup.admin.filter(adminId => adminId.toString() === admin);
+        if (!deleteChatGroup) {
+            return res.status(404).json({ message: "Không tìm thấy nhóm chat." });
         }
+        if (checkAdmin.length === 0) {
+            return res.status(400).json({ message: "Bạn không phải là admin của nhóm chat." });
+        }
+        await userModel.updateMany({ chatGroups: chatGroup }, { $pull: { chatGroups: chatGroup } });
+        await chatGroupModel.findByIdAndDelete(chatGroup);
 
         res.status(200).json({ message: "Nhóm chat đã được xóa thành công." });
     } catch (error) {
         console.error('Lỗi khi xóa nhóm chat:', error);
         res.status(500).json({ message: "Đã xảy ra lỗi khi xóa nhóm chat." });
     }
-};     
+};    
 
-// const deleteChatGroup = async (req, res) => {
-//     try {
-//         const chatGroup = await chatGroupModel.findByIdAndDelete(req.params.id);
-//         if (!chatGroup) {
-//             return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
-//         }
-//         res.status(200).json(chatGroup);
-//     }
-//     catch (error) {
-//         console.log('Lỗi tìm chatgroup', error);
-//         res.status(404).json({ message: error.message });
-//     }
-// }
-module.exports = { createChatGroup, getChatGroupById, addMemberToChatGroup, deleteUserChatGroup, deleteChatGroup};
+const outChatGroup = async (req, res) => {
+    try {
+        const {userId, chatGroupId} = req.body;
+        console.log(chatGroupId);
+        const chatGroup = await chatGroupModel.findById(chatGroupId);
+        if (!chatGroup) {
+            return res.status(404).json({ message: "Không tìm thấy nhóm chat." });
+        }
+        const updateMember = chatGroup.members.filter(memberId => memberId.toString() !== userId);
+        chatGroup.members = updateMember;
+        await chatGroup.save();
+        await userModel.findByIdAndUpdate(userId, { $pull: { chatGroups: chatGroupId } });
+        res.status(200).json(chatGroup);
+    }
+    catch (error) {
+        console.log('Xoá người dùng khỏi nhóm chat không thành công', error);
+        res.status(404).json({ message: error.message });
+    }
+}
+
+module.exports = { createChatGroup, getAllChatGroupByUserId, addMembersToChatGroup, deleteMembersChatGroup , deleteChatGroup, outChatGroup};

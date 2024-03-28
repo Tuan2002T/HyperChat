@@ -30,9 +30,29 @@ const userSchema = new mongoose.Schema({
     },
     avatar: {
         type: String,
-        default: "https://hyperchatimg.s3.ap-southeast-1.amazonaws.com/default_image.jpg"
-    }
-
+        default: "https://hyperchatimage.s3.ap-southeast-1.amazonaws.com/default_image.jpg"
+    },
+    friends: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            default: []
+        }
+    ],
+    chatGroups: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ChatGroup",
+            default: []
+        }
+    ],
+    chatPrivate: [
+        {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "ChatPrivate",
+            default: []
+        }
+    ],
 }
     , {
         timestamps: true

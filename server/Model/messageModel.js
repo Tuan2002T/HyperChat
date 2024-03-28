@@ -1,24 +1,33 @@
 const mongoose = require('mongoose');
-
+const Schema = mongoose.Schema;
 const messageSchema = new mongoose.Schema({
-    content: {
-        type: String,
-    },
     sender: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'User',
         required: true
     },
-    chatType: {
-        type: String,
-        enum: ['user', 'group'],
-        required: true
+    content: {
+        text: {
+            type: String,
+            required: true
+        },
+        files: [
+            {
+              name: { type: String, required: true },
+              url: { type: String, required: true },
+              type: { type: String, required: true }, // e.g. 'image/jpeg', 'application/pdf'
+              size: { type: Number, required: true } // size in bytes
+            }
+          ]
     },
-    chatId: {
-        type: mongoose.Schema.Types.ObjectId,
+    chatGroup: {
+        type: Schema.Types.ObjectId,
+        ref: 'ChatGroup',
     },
-    fileType: [{ type: String }],
-    fileUrl: [{ type: String }],
+    chatPrivate: {
+        type: Schema.Types.ObjectId,
+        ref: 'ChatPrivate',
+    }
 }, {
     timestamps: true
 });
