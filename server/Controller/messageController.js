@@ -67,7 +67,7 @@ const getAllMessagesByChatId = async (req, res) => {
         }
     
     
-        res.status(200).json(query);
+        res.status(200).json(query.messages);
       } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Internal server error' });

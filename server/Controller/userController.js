@@ -194,6 +194,9 @@ const loginUser = async (req, res) => {
         user: user.userName,
         email: user.email,
         phoneNumber: user.phoneNumber,
+        fullname: user.fullname,
+        birthday: user.birthday,
+        avatar: user.avatar,
         token,
       });
       console.log("Đăng nhập thành công.");
@@ -301,6 +304,64 @@ const updateUser = async (req, res) => {
     }
 }
 
+const sendOTPForgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        const user = await userModel.findOne({
+            email
+        });
+        if (!user) return res.status(404).json({ message: "Email không tồn tại." });
+        const otp = Math.floor(100000 + Math.random() * 900000);
+        const date = new Date();
+        const dateStr = formatDate(date);
+        const mailOptions = {
+            from: "HyperChat",
+            to: email,
+            subject: 'Your OTP Code',
+            html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr).replace('{{fullname}}', user.fullname)
+        };
+        const regisOTPForgotPassword = {email,otp };
+        await redisClient.set(email, JSON.stringify(regisOTPForgotPassword));
+        transporter.sendMail(mailOptions, (error, info) => {
+            if (error) {
+                console.log(error);
+                res.status(500).json({ error: 'Failed to send OTP' });
+            } else {
+                console.log('Email sent: ' + info.response);
+                res.json({ message: 'OTP sent successfully' });
+            }
+        });
+        res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn." });
+    }
+    catch (error) {
+        console.log("Error: ", error);
+        res.status(500).json({ error: "Lỗi server." });
+    }
+}
+
+const verifyOTPForgotPassword = async (req, res) => {
+    try {
+        const { email, userOTP, password } = req.body;
+        const regisOTPForgotPassword = await redisClient.get(email);
+        const { otp } = JSON.parse(regisOTPForgotPassword);
+        if (!userOTP) return res.status(400).json({ error: "Vui lòng nhập mã OTP." });
+        if (userOTP !== otp.toString()) return res.status(400).json({ error: "Mã OTP không chính xác." });
+
+        const user = await userModel.findOne({ email    });
+        
+        const salt = await bcrypt.genSalt(10);
+
+        user.password = await bcrypt.hash(password, salt);
+
+        const updatePas = await user.save();
+
+        res.status(200).json(updatePas);
+    } catch (error) {
+        console.log("Error: ", error);
+        res.status(500).json({ error: "Lỗi server." });
+    }
+}
+
 const listFriends = async (req, res) => {
     try{
         const {userId} = req.params;
@@ -313,4 +374,20 @@ const listFriends = async (req, res) => {
     }
 }
 
-module.exports = { sendOTP,verifyOTPAndRegister ,loginUser, getUsers, findUser, findUserByPhoneNumber, updateUser, listFriends, upload };
+const getListChats = async (req, res) => {
+    try{
+        const {userId} = req.params;
+        const chatGroup = await userModel.findById(userId).populate('chatGroups', 'name members admin messages avatar');
+        const chatPrivate = await userModel.findById(userId).populate('chatPrivate', 'name members messages avatar');
+        const chatGroup1 = chatGroup.chatGroups
+        const chatPrivate1 = chatPrivate.chatPrivate;
+        const chats = [...chatGroup1,...chatPrivate1];
+        res.status(200).json(chats);
+    }
+    catch(error){
+        console.log(error.message);
+        res.status(500).json({message: error.message});
+    }
+}
+
+module.exports = { sendOTP,verifyOTPAndRegister ,loginUser, getUsers, findUser, findUserByPhoneNumber, updateUser, listFriends, upload ,sendOTPForgotPassword, verifyOTPForgotPassword, getListChats};
