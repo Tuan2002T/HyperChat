@@ -40,6 +40,7 @@ function formatDate(date) {
 const multer = require("multer");
 const AWS = require("aws-sdk");
 const path = require("path");
+const { log } = require("console");
 
 
 process.env.AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE = "1";
@@ -114,6 +115,7 @@ const sendOTP = async (req, res) => {
 
         // Tạo mã OTP ngẫu nhiên
         const otp = Math.floor(100000 + Math.random() * 900000);
+        console.log("OTP: ", otp);
         const date = new Date();
         const dateStr = formatDate(date);
         const mailOptions = {
@@ -243,58 +245,36 @@ const findUserByPhoneNumber = async (req, res) => {
 }
 
 const updateUser = async (req, res) => {
-    const userId = req.params.id; // Lấy ID của người dùng từ tham số URL
-    const { userName, fullname } = req.body; // Lấy các trường cần cập nhật từ body của yêu cầu
-    let avatar = req.file; // Lấy file ảnh từ yêu cầu
-    console.log("req.body: ", avatar);
+    const userId = req.params.id; 
+    const { userName, fullname, birthday } = req.body; 
+    let avatar = req.file; 
+
     try {
-        let avatarName;
         // Tìm người dùng trong cơ sở dữ liệu
         const user = await userModel.findById(userId);
 
         if (!user) {
             return res.status(404).json({ message: "Người dùng không tồn tại" });
         }
-        //upload ảnh lên s3
-        avatar = req.file?.originalname.split(".");
-        const fileType = avatar[avatar.length - 1];
-        const filePath = `avatar.${Date.now().toString()}.${fileType}`;
-        // console.log("filePath: ", filePath);
-        const paramsS3 = {
-            Bucket: bucketName,
-            Key: filePath,
-            Body: req.file.buffer,
-            ContentType: req.file.mimetype,
-        }
-        s3.upload(paramsS3, async(err, data) => {
-            if (err) {
-                console.log("error=", err);
-                return res.send("Internal server error!")
-            } else {
-                const imageURL = data.Location;
-                const paramsDynamoDb = {
-                    TableName: tableName,
-                    Item: {
-                        idUser: userId,
-                        avatar: imageURL,
-                    },
-                };
-                await dynamodb.put(paramsDynamoDb).promise();
-            }
-        });
-    
-        const params = { TableName: tableName };
-        const data = await dynamodb.scan(params).promise();
-        data.Items.forEach((item) => {
-            if (item.idUser === userId) {
-                avatarName = item.avatar;
-            }
-        });
-        console.log("data=", avatarName);;
-        // Cập nhật từng trường
+
+        // Cập nhật từng trường nếu dữ liệu được cung cấp
         if (userName) user.userName = userName;
         if (fullname) user.fullname = fullname;
-        if (avatarName) user.avatar = avatarName;
+        if (birthday) user.birthday = birthday;
+
+        // Nếu có ảnh được tải lên, tiến hành lưu trữ và cập nhật đường dẫn ảnh
+        if (avatar) {
+            const paramsS3 = {
+                Bucket: bucketName,
+                Key: `avatar.${Date.now()}.${avatar.originalname.split(".").pop()}`,
+                Body: avatar.buffer,
+                ContentType: avatar.mimetype,
+            };
+
+            const data = await s3.upload(paramsS3).promise();
+            user.avatar = data.Location;
+        }
+
         // Lưu thay đổi
         const updatedUser = await user.save();
 
@@ -312,6 +292,7 @@ const sendOTPForgotPassword = async (req, res) => {
         });
         if (!user) return res.status(404).json({ message: "Email không tồn tại." });
         const otp = Math.floor(100000 + Math.random() * 900000);
+        console.log("OTP: ", otp);
         const date = new Date();
         const dateStr = formatDate(date);
         const mailOptions = {

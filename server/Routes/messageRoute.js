@@ -5,5 +5,5 @@ const router = express.Router();
 
 router.post("/", createMessage);
 router.post("/sendMessage", sendMessage)
-router.get("/getAllMessagesByChatId", getAllMessagesByChatId);
+router.post("/getAllMessagesByChatId", getAllMessagesByChatId);
 module.exports = router;
