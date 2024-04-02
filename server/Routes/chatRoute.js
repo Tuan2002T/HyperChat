@@ -3,7 +3,6 @@ const { createChatPrivate, findChatPrivateById, findChatPrivateByName } = requir
 const { createChatGroup, getAllChatGroupByUserId, addMembersToChatGroup, deleteMembersChatGroup, deleteChatGroup, outChatGroup } = require('../Controller/chatGroupController');
 
 const router = express.Router();
-
 //ChatPrivate
 router.post("/createChatPrivate", createChatPrivate)
 router.get("/findChatPrivateByName/:userId", findChatPrivateByName)

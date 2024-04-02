@@ -93,85 +93,89 @@ const createToken = (_id) => {
 
 const sendOTP = async (req, res) => {
     try {
-        const { userName, password, fullname, email, phoneNumber, birthday } = req.body;
-
-        let user = await userModel.findOne({ $or: [{ email }, { userName }] });
-
-        if (user) return res.status(400).json({ error: "Email hoặc Tên đăng nhập đã tồn tại." });
-
-        if (!validator.isMobilePhone(phoneNumber, "vi-VN")) return res.status(400).json({ error: "Số điện thoại không hợp lệ." });
-
-        user = await userModel.findOne({ phoneNumber });
-
-        if (user) return res.status(400).json({ error: "Số điện thoại đã tồn tại." });
-
-        if (!userName || !password || !email || !fullname || !birthday ) return res.status(400).json({ error: "Bắt buộc nhập đầy đủ thông tin." });
-
-        if (!validator.isStrongPassword(password)) return res.status(400).json({ error: "Mật khẩu không đủ mạnh." });
-
-        if (!validator.isEmail(email)) return res.status(400).json({ error: "Email không hợp lệ." });
-
-        if (!validator.isMobilePhone(phoneNumber, "vi-VN")) return res.status(400).json({ error: "Số điện thoại không hợp lệ." });
-
-        // Tạo mã OTP ngẫu nhiên
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        console.log("OTP: ", otp);
-        const date = new Date();
-        const dateStr = formatDate(date);
-        const mailOptions = {
-            from: "HyperChat",
-            to: email,
-            subject: 'Your OTP Code',
-            html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr).replace('{{fullname}}', fullname)
-        };
-        
-        // Lưu mã OTP vào redis
-        const registrationData = { userName, password, fullname, email, phoneNumber, birthday, otp };
-        await redisClient.set(email, JSON.stringify(registrationData));
-        // Gửi email
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log(error);
-                res.status(500).json({ error: 'Failed to send OTP' });
-            } else {
-                console.log('Email sent: ' + info.response);
-                res.json({ message: 'OTP sent successfully' });
-            }
-        });
-        res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn." });
+      const { userName, password, fullname, email, phoneNumber, birthday } = req.body;
+      let user = await userModel.findOne({ $or: [{ email }, { userName }] });
+      if (user) return res.status(400).json({ error: "Email hoặc Tên đăng nhập đã tồn tại." });
+      if (!validator.isMobilePhone(phoneNumber, "vi-VN")) return res.status(400).json({ error: "Số điện thoại không hợp lệ." });
+      user = await userModel.findOne({ phoneNumber });
+      if (user) return res.status(400).json({ error: "Số điện thoại đã tồn tại." });
+      if (!userName || !password || !email || !fullname || !birthday) return res.status(400).json({ error: "Bắt buộc nhập đầy đủ thông tin." });
+      if (!validator.isStrongPassword(password)) return res.status(400).json({ error: "Mật khẩu không đủ mạnh." });
+      if (!validator.isEmail(email)) return res.status(400).json({ error: "Email không hợp lệ." });
+      if (!validator.isMobilePhone(phoneNumber, "vi-VN")) return res.status(400).json({ error: "Số điện thoại không hợp lệ." });
+  
+      // Tạo mã OTP ngẫu nhiên
+      const otp = Math.floor(100000 + Math.random() * 900000);
+      console.log("OTP: ", otp);
+      const date = new Date();
+      const dateStr = formatDate(date);
+      const mailOptions = {
+        from: "HyperChat",
+        to: email,
+        subject: 'Your OTP Code',
+        html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr).replace('{{fullname}}', fullname)
+      };
+  
+      // Lưu mã OTP vào redis
+      const registrationData = { userName, password, fullname, email, phoneNumber, birthday, otp };
+      await redisClient.set(email, JSON.stringify(registrationData));
+  
+      // Đặt thời gian hết hạn cho mã OTP là 60 giây
+      await redisClient.expire(email, 60);
+  
+      // Gửi email
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log(error);
+          res.status(500).json({ error: 'Failed to send OTP' });
+        } else {
+          console.log('Email sent: ' + info.response);
+          res.json({ message: 'OTP sent successfully' });
+        }
+      });
+      res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn." });
     } catch (error) {
-        console.log("Error: ", error);
-        res.status(500).json({ error: "Lỗi server." });
+      console.log("Error: ", error);
+      res.status(500).json({ error: "Lỗi server." });
     }
-}
-
-const verifyOTPAndRegister = async (req, res) => {
+  }
+  const verifyOTPAndRegister = async (req, res) => {
     try {
-        const { email, userOTP } = req.body;
-        const registrationData = await redisClient.get(email);
-        const { userName, password, fullname, phoneNumber, birthday, otp } = JSON.parse(registrationData);
-        console.log(otp);
-        // Xác minh mã OTP
-        if (!userOTP) return res.status(400).json({ error: "Vui lòng nhập mã OTP." });
-
-        if (userOTP !== otp.toString()) return res.status(400).json({ error: "Mã OTP không chính xác." });
-        user = new userModel({ userName, password, email, phoneNumber, fullname, birthday });
-
-        const salt = await bcrypt.genSalt(10);
-
-        user.password = await bcrypt.hash(password, salt);
-
-        await user.save();
-
-        const token = createToken(user._id);
-
-        res.status(200).json({ _id: user._id, user: userName, password, email, phoneNumber, fullname,birthday, token });
+      const { email, userOTP } = req.body;
+      const registrationData = await redisClient.get(email);
+  
+      // Kiểm tra xem mã OTP đã hết hạn hay chưa
+      if (!registrationData) {
+        return res.status(400).json({ error: "Mã OTP đã hết hạn." });
+      }
+  
+      const { userName, password, fullname, phoneNumber, birthday, otp } = JSON.parse(registrationData);
+      console.log(otp);
+  
+      // Xác minh mã OTP
+      if (!userOTP) {
+        return res.status(400).json({ error: "Vui lòng nhập mã OTP." });
+      }
+      if (userOTP !== otp.toString()) {
+        return res.status(400).json({ error: "Mã OTP không chính xác." });
+      }
+  
+      // Tạo người dùng mới
+      user = new userModel({ userName, password, email, phoneNumber, fullname, birthday });
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+      await user.save();
+  
+      // Xóa mã OTP khỏi Redis
+      await redisClient.del(email);
+  
+      const token = createToken(user._id);
+      res.status(200).json({ _id: user._id, user: userName, password, email, phoneNumber, fullname, birthday, token });
     } catch (error) {
-        console.log("Error: ", error);
-        res.status(500).json({ error: "Lỗi server." });
+      console.log("Error: ", error);
+      res.status(500).json({ error: "Lỗi server." });
     }
-}
-
+  }
 const loginUser = async (req, res) => {
     try {
       const { account, password } = req.body;
@@ -286,62 +290,74 @@ const updateUser = async (req, res) => {
 
 const sendOTPForgotPassword = async (req, res) => {
     try {
-        const { email } = req.body;
-        const user = await userModel.findOne({
-            email
-        });
-        if (!user) return res.status(404).json({ message: "Email không tồn tại." });
-        const otp = Math.floor(100000 + Math.random() * 900000);
-        console.log("OTP: ", otp);
-        const date = new Date();
-        const dateStr = formatDate(date);
-        const mailOptions = {
-            from: "HyperChat",
-            to: email,
-            subject: 'Your OTP Code',
-            html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr).replace('{{fullname}}', user.fullname)
-        };
-        const regisOTPForgotPassword = {email,otp };
-        await redisClient.set(email, JSON.stringify(regisOTPForgotPassword));
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.log(error);
-                res.status(500).json({ error: 'Failed to send OTP' });
-            } else {
-                console.log('Email sent: ' + info.response);
-                res.json({ message: 'OTP sent successfully' });
-            }
-        });
-        res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn." });
-    }
-    catch (error) {
-        console.log("Error: ", error);
-        res.status(500).json({ error: "Lỗi server." });
-    }
-}
-
-const verifyOTPForgotPassword = async (req, res) => {
-    try {
-        const { email, userOTP, password } = req.body;
-        const regisOTPForgotPassword = await redisClient.get(email);
-        const { otp } = JSON.parse(regisOTPForgotPassword);
-        if (!userOTP) return res.status(400).json({ error: "Vui lòng nhập mã OTP." });
-        if (userOTP !== otp.toString()) return res.status(400).json({ error: "Mã OTP không chính xác." });
-
-        const user = await userModel.findOne({ email    });
-        
-        const salt = await bcrypt.genSalt(10);
-
-        user.password = await bcrypt.hash(password, salt);
-
-        const updatePas = await user.save();
-
-        res.status(200).json(updatePas);
+      const { email } = req.body;
+      const user = await userModel.findOne({ email });
+      if (!user) return res.status(404).json({ message: "Email không tồn tại." });
+      const otp = Math.floor(100000 + Math.random() * 900000);
+      console.log("OTP: ", otp);
+      const date = new Date();
+      const dateStr = formatDate(date);
+      const mailOptions = {
+        from: "HyperChat",
+        to: email,
+        subject: 'Your OTP Code',
+        html: htmlTemplate.replace('{{otp}}', otp).replace('{{date}}', dateStr).replace('{{fullname}}', user.fullname)
+      };
+      const regisOTPForgotPassword = { email, otp };
+  
+      // Đặt thời gian hết hạn là giây
+      const expirationTime = 60;
+  
+      // Lưu mã OTP vào Redis với thời gian hết hạn
+      await redisClient.set(email, JSON.stringify(regisOTPForgotPassword));
+      await redisClient.expire(email, expirationTime);
+  
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.log(error);
+          res.status(500).json({ error: 'Failed to send OTP' });
+        } else {
+          console.log('Email sent: ' + info.response);
+          res.json({ message: 'OTP sent successfully' });
+        }
+      });
+      res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn." });
     } catch (error) {
-        console.log("Error: ", error);
-        res.status(500).json({ error: "Lỗi server." });
+      console.log("Error: ", error);
+      res.status(500).json({ error: "Lỗi server." });
     }
-}
+  }
+
+  
+  const verifyOTPForgotPassword = async (req, res) => {
+    try {
+      const { email, userOTP, password } = req.body;
+      const regisOTPForgotPassword = await redisClient.get(email);
+  
+      if (!regisOTPForgotPassword) {
+        return res.status(400).json({ error: "Mã OTP đã hết hạn." });
+      }
+  
+      const { otp } = JSON.parse(regisOTPForgotPassword);
+  
+      if (!userOTP) {
+        return res.status(400).json({ error: "Vui lòng nhập mã OTP." });
+      }
+  
+      if (userOTP !== otp.toString()) {
+        return res.status(400).json({ error: "Mã OTP không chính xác." });
+      }
+  
+      const user = await userModel.findOne({ email });
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+      const updatePas = await user.save();
+      res.status(200).json(updatePas);
+    } catch (error) {
+      console.log("Error: ", error);
+      res.status(500).json({ error: "Lỗi server." });
+    }
+  };
 
 const listFriends = async (req, res) => {
     try{
