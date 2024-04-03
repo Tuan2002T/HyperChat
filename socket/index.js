@@ -103,10 +103,10 @@ io.on('connection', (socket) => {
 
   // Lắng nghe sự kiện gửi tin nhắn từ client
   socket.on('sendMessage', (data) => {
-    const { roomId, message, senderId } = data;
+    const { roomId, message, senderId, createdAt  } = data;
 
     // Phát sóng tin nhắn đến tất cả các client trong cùng phòng chat
-    io.to(roomId).emit('receiveMessage', { message, senderId });
+    io.to(roomId).emit('receiveMessage', { message, senderId, createdAt  });
     console.log(`Message sent to room ${roomId}: ${message} (from ${senderId})`);
   });
   socket.on('getRoomList', () => {

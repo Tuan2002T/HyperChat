@@ -1,5 +1,5 @@
 const express = require('express');
-const {  getUsers, loginUser, findUser, findUserByPhoneNumber, updateUser, upload, sendOTP, verifyOTPAndRegister, listFriends, sendOTPForgotPassword, verifyOTPForgotPassword, getListChats } = require('../Controller/userController');
+const {  getUsers, loginUser, findUser, findUserByPhoneNumber, updateUser, upload, sendOTP, verifyOTPAndRegister, listFriends, sendOTPForgotPassword, verifyOTPForgotPassword, getListChats, changePassword } = require('../Controller/userController');
 
 
 
@@ -16,4 +16,5 @@ router.get("/listFriends/:userId",auth, listFriends);
 router.post("/sendOTPForgotPassword", sendOTPForgotPassword);
 router.put("/verifyOTPForgotPassword", verifyOTPForgotPassword);
 router.get("/getListChats/:userId", getListChats);
+router.put("/changePassword", changePassword);
 module.exports = router;

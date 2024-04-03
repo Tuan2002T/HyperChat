@@ -386,5 +386,24 @@ const getListChats = async (req, res) => {
         res.status(500).json({message: error.message});
     }
 }
+const changePassword = async (req, res) => {
+    try {
+        const { userId, oldPassword, newPassword } = req.body;
+        const user = await userModel.findById(userId);
+        if (!user) return res.status(404).json({ message: "Người dùng không tồn tại." });
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) return res.status(400).json({ message: "Mật khẩu cũ không chính xác." });
+        if (!validator.isStrongPassword(newPassword)) return res.status(400).json({ message: "Mật khẩu mới không đủ mạnh." });
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(newPassword, salt);
+        await user.save();
+        res.status(200).json({ message: "Đổi mật khẩu thành công." });
+    }
+    catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: error.message });
+    }
+}
 
-module.exports = { sendOTP,verifyOTPAndRegister ,loginUser, getUsers, findUser, findUserByPhoneNumber, updateUser, listFriends, upload ,sendOTPForgotPassword, verifyOTPForgotPassword, getListChats};
+
+module.exports = { sendOTP,verifyOTPAndRegister ,loginUser, getUsers, findUser, findUserByPhoneNumber, updateUser, listFriends, upload ,sendOTPForgotPassword, verifyOTPForgotPassword, getListChats, changePassword};
