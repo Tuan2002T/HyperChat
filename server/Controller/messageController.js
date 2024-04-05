@@ -2,58 +2,103 @@ const messageModel = require('../Model/messageModel');
 const chatGroupModel = require('../Model/chatGroupModel');
 const chatPrivateModel = require('../Model/chatPrivateModel');
 const userModel = require('../Model/userModel');
-const createMessage = async (req, res) => {
-    const { content, sender, chatType, chatId, fileType, fileUrl } = req.body;
-    try {
-        const newMessage = new messageModel({ content, sender, chatType, chatId, fileType, fileUrl });
-        const savedMessage = await newMessage.save();
-        res.status(200).json(savedMessage);
-    } catch (error) {
-        console.log('error', error.message);
-        res.status(500).json({ message: error.message });
+
+const multer = require("multer");
+const AWS = require("aws-sdk");
+const path = require("path");
+
+
+process.env.AWS_SDK_JS_SUPPRESS_MAINTENANCE_MODE_MESSAGE = "1";
+
+AWS.config.update({
+    accessKeyId: process.env.ACCESS_KEY_ID,
+    secretAccessKey: process.env.SECRET_ACCESS_KEY,
+    region: process.env.REGION
+});
+
+const s3 = new AWS.S3();
+const dynamodb = new AWS.DynamoDB.DocumentClient();
+
+const bucketName = process.env.S3_BUCKET_NAME;
+const tableName = process.env.DYNAMODB_TABLE_NAME;
+const storage = multer.memoryStorage({
+    destination: function (req, file, callback) {
+        callback(null, "");
     }
-};
+});
+
+const upload = multer({
+    storage,
+    limits: { fileSize: 5000000 },
+    fileFilter: function (req, file, callback) {
+        checkFileType(file, callback);
+    },
+});
+
+function checkFileType(file, callback) {
+  const fileTypes = /jpeg|jpg|png|gif|mp4|mov|avi|doc|docx|pdf/;
+    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimeType = fileTypes.test(file.mimetype);
+    if (extname && mimeType) {
+        return callback(null, true);
+    }
+    return callback("Chỉ chấp nhận file ảnh, video hoặc tài liệu!");
+}
 
 const sendMessage = async (req, res) => {
-    try {
-      const { sender, messageText, files, chatGroupId, chatPrivateId } = req.body;
-      const user = await userModel.findById(sender);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-  
-      let chat;
-      if (chatGroupId) {
-        chat = await chatGroupModel.findById(chatGroupId);
-        if (!chat) {
-          return res.status(404).json({ error: 'Chat group not found' });
-        }
-      } else if (chatPrivateId) {
-        chat = await chatPrivateModel.findById(chatPrivateId);
-        if (!chat) {
-          return res.status(404).json({ error: 'Chat private not found' });
-        }
-      } else {
-        return res.status(400).json({ error: 'Either chatGroupId or chatPrivateId is required' });
+  try {
+    const { sender, messageText, chatGroupId, chatPrivateId } = req.body;
+    const user = await userModel.findById(sender);
+    let img = req.file;
+    if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại' });
+    console.log(img);
+    let chat;
+    if (chatGroupId) {
+      chat = await chatGroupModel.findById(chatGroupId);
+      if (!chat) {
+        return res.status(404).json({ error: 'Chat nhóm không tồn tại' });
       }
-  
-      const newMessage = new messageModel({
-        sender,
-        content: {
-          text: messageText,
-          files: files || []
-        },
-        chatGroup: chatGroupId,
-        chatPrivate: chatPrivateId,
-      });
-  
-      const savedMessage = await newMessage.save();
-      await chat.updateOne({ $push: { messages: savedMessage._id } });
-  
-      res.status(200).json({ message: 'Message sent successfully', data: savedMessage });
-    } catch (error) {
-      console.log('Error:', error.message);
-      res.status(500).json({ message: error.message });
+    } else if (chatPrivateId) {
+      chat = await chatPrivateModel.findById(chatPrivateId);
+      if (!chat) {
+        return res.status(404).json({ error: 'Chat không tồn tại' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Cần có chatGroupId hoặc chatPrivateId' });
     }
-  };
+
+    if (img) {
+            const paramsS3 = {
+                Bucket: bucketName,
+                Key: `message.${Date.now()}.${img.originalname.split(".").pop()}`,
+                Body: img.buffer,
+                ContentType: img.mimetype,
+            };
+
+            const data = await s3.upload(paramsS3).promise();
+            img = [data.Location];
+        }
+
+        console.log('img', img);
+
+    const newMessage = new messageModel({
+      sender,
+      content: {
+        text: messageText,
+        files: img,
+      },
+      chatGroup: chatGroupId,
+      chatPrivate: chatPrivateId,
+    });
+
+    const savedMessage = await newMessage.save();
+    await chat.updateOne({ $push: { messages: savedMessage._id } });
+    res.status(200).json({ message: 'Message sent successfully', data: savedMessage });
+  } catch (error) {
+    console.log('Error:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 const getAllMessagesByChatId = async (req, res) => {
     try {
@@ -76,4 +121,4 @@ const getAllMessagesByChatId = async (req, res) => {
 };
 
 
-module.exports = { createMessage, sendMessage, getAllMessagesByChatId};
+module.exports = {sendMessage: [upload.single('files'), sendMessage], getAllMessagesByChatId};

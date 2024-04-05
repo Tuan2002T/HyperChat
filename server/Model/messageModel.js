@@ -11,14 +11,7 @@ const messageSchema = new mongoose.Schema({
             type: String,
             required: true
         },
-        files: [
-            {
-              name: { type: String, required: true },
-              url: { type: String, required: true },
-              type: { type: String, required: true }, // e.g. 'image/jpeg', 'application/pdf'
-              size: { type: Number, required: true } // size in bytes
-            }
-          ]
+        files: []
     },
     chatGroup: {
         type: Schema.Types.ObjectId,
