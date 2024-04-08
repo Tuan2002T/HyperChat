@@ -1,3 +1,49 @@
+
+// const { Server } = require("socket.io");
+
+// const io = new Server();
+
+// // Lưu trữ danh sách các phòng chat
+// const rooms = [];
+
+// io.on('connection', (socket) => {
+//   console.log('A user connected', socket.id);
+
+//   // Xử lý khi client tham gia phòng chat
+//   socket.on('joinRoom', (roomId) => {
+//     const room = rooms.find(r => r.id === roomId) || { id: roomId, clients: [] };
+//     room.clients.push(socket.id);
+//     console.log("rooms", room);
+//     socket.join(roomId);
+//     console.log(`Client ${socket.id} joined room ${roomId}`);
+//   });
+
+//   // Lắng nghe sự kiện gửi tin nhắn từ client
+//   socket.on('sendMessage', (data) => {
+//     const { roomId, message, senderId, createdAt  } = data;
+
+//     // Phát sóng tin nhắn đến tất cả các client trong cùng phòng chat
+//     io.to(roomId).emit('receiveMessage', { message, senderId, createdAt  });
+//     console.log(`Message sent to room ${roomId}: ${message} (from ${senderId})`);
+//   });
+//   socket.on('getRoomList', () => {
+//     socket.emit('roomList', rooms);
+//   });
+//   // Xử lý khi client ngắt kết nối
+//   socket.on('disconnect', () => {
+//     console.log('A user disconnected');
+//     // Xóa client khỏi các phòng chat
+//     rooms.forEach(room => {
+//       room.clients = room.clients.filter(client => client !== socket.id);
+//     });
+//   });
+// });
+
+// const PORT = 3000;
+// io.listen(PORT);
+// console.log(`Server is running on port ${PORT}`);
+
+
 const { Server } = require("socket.io");
 
 const io = new Server();
@@ -38,15 +84,24 @@ io.on('connection', (socket) => {
 
 
 
-  socket.on('sendMessage', ({ roomId, message, senderId, createdAt }) => {
+  socket.on('sendMessage', ({ roomId, message, senderId, image, video, createdAt }) => {
     console.log(`Người dùng ${senderId} đã gửi tin nhắn trong phòng chat ${roomId}: ${message}`);
     console.log('room', rooms[roomId]);
     const room = rooms[roomId];
     console.log('room', room.socket);
+    console.log('ảnh đã gửi', image);
+    console.log('video đã gửi', video);
+    console.log('Tin nhắn đã gửi', roomId, message, senderId, image, video, createdAt);
     room.socket.forEach(socketId => {
-      io.to(socketId).emit('receiveMessage', { message, senderId, createdAt });
+      io.to(socketId).emit('receiveMessage', { message, senderId, image, video, createdAt });
     });
   
+  });
+
+  socket.on('deleteRoom', (roomId) => {
+    delete rooms[roomId];
+    console.log(`Đã xóa phòng chat ${roomId}`);
+    console.log('Danh sách phòng chat : ', rooms);
   });
 
   socket.on('sendNotification', ({ roomId, notification }) => {
@@ -88,6 +143,11 @@ io.on('connection', (socket) => {
       onlineUsers.splice(index, 1);
       io.emit('onlineUsers', onlineUsers.map(user => user.userId)); // Cập nhật danh sách người dùng trực tuyến tới tất cả client
     }
+
+    rooms.forEach(room => {
+      if(room.socket.length<=0)
+          socket.emit('deleteRoom', room.id)
+    });
     console.log('Danh sách người dùng trực tuyến : ', onlineUsers.map(user => user.userId));
   });
 });
