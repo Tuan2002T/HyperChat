@@ -36,7 +36,7 @@ const upload = multer({
 });
 
 function checkFileType(file, callback) {
-  const fileTypes = /jpeg|jpg|png|gif|mp4|mov|avi|doc|docx|pdf/;
+  const fileTypes = /jpeg|jpg|png|gif|mp4|mov|avi|doc|docx|pdf|txt|ppt|pptx|xls|xlsx|zip|rar|/;
     const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
     const mimeType = fileTypes.test(file.mimetype);
     if (extname && mimeType) {
@@ -134,6 +134,7 @@ const retrieveMessages = async (req, res) => {
       return res.status(404).json({error: 'Không tìm thấy tin nhắn'});
     }
     message.content.text = 'Tin nhắn đã được thu hồi';
+    message.content.files = [];
 
     await message.save();
 
