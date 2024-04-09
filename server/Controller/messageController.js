@@ -48,6 +48,7 @@ function checkFileType(file, callback) {
 const sendMessage = async (req, res) => {
   try {
     const { sender, messageText, chatGroupId, chatPrivateId } = req.body;
+    
     const user = await userModel.findById(sender);
     let img = req.file;
     if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại' });
@@ -93,7 +94,7 @@ const sendMessage = async (req, res) => {
 
     const savedMessage = await newMessage.save();
     await chat.updateOne({ $push: { messages: savedMessage._id } });
-    res.status(200).json(savedMessage.content.files);
+    res.status(200).json({files: savedMessage.content.files, id : savedMessage._id});
   } catch (error) {
     console.log('Error:', error.message);
     res.status(500).json({ message: error.message });
@@ -176,6 +177,7 @@ const sendMessages = async (req, res) => {
   try {
     const { sender, messageText, chatGroupId, chatPrivateId } = req.body;
     const user = await userModel.findById(sender);
+    
     let imgs = req.files; // Đổi từ req.file thành req.files để hỗ trợ upload nhiều ảnh
 
     if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại' });

@@ -84,8 +84,9 @@ io.on('connection', (socket) => {
 
 
 
-  socket.on('sendMessage', ({ roomId, message, senderId, image, video, file, createdAt }) => {
+  socket.on('sendMessage', ({ roomId, message, senderId, image, video, file, createdAt, messageId }) => {
     console.log(`Người dùng ${senderId} đã gửi tin nhắn trong phòng chat ${roomId}: ${message}`);
+    console.log('messageId', messageId);
     console.log('room', rooms[roomId]);
     const room = rooms[roomId];
     console.log('room', room.socket);
@@ -93,7 +94,7 @@ io.on('connection', (socket) => {
     console.log('video đã gửi', video);
     console.log('Tin nhắn đã gửi', roomId, message, senderId, image, video, file, createdAt);
     room.socket.forEach(socketId => {
-      io.to(socketId).emit('receiveMessage', { message, senderId, image, video, file, createdAt });
+      io.to(socketId).emit('receiveMessage', { message, senderId, image, video, file, createdAt, messageId  });
     });
 
     onlineUsers.forEach(user => {
@@ -111,10 +112,11 @@ io.on('connection', (socket) => {
 
   });
 
-  socket.on('retrieveMessages', ({ roomId, messageId }) => {
+  socket.on('retrieveMessages', ({ roomId, updatedMessages }) => {
+    console.log('updatedMessages', updatedMessages);
     const room = rooms[roomId];
     room.socket.forEach(socketId => {
-      io.to(socketId).emit('retrievedMessage', { messageId, content: "Tin nhắn đã bị thu hồi" });
+      io.to(socketId).emit('retrievedMessageRecall', updatedMessages);
     });
   });
 

@@ -8,5 +8,5 @@ router.post("/sendMessage", sendMessage)
 router.post("/sendMessages", sendMessages)
 router.get("/getAllMessagesByChatId/:chatId", getAllMessagesByChatId);
 router.post("/retrieveMessages/:messageId", retrieveMessages);
-router.delete("/deleteMessage/:messageId", deleteMessage);
+router.put("/deleteMessage", deleteMessage);
 module.exports = router;
