@@ -14,7 +14,7 @@ redisClient.on('error', (err) => {
   console.log('Redis Client Error', err);
 });
 
-redisClient.connect();
+// redisClient.connect();
 //OTP Gmail
 const nodeMailer = require("nodemailer");
 // Khởi tạo transporter cho nodemailer

@@ -1,0 +1,35 @@
+version: '3'
+services:
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - ATLATS_URI=${ATLATS_URI}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - ACCESS_KEY_ID=${ACCESS_KEY_ID}
+      - SECRET_ACCESS_KEY=${SECRET_ACCESS_KEY}
+      - REGION=${REGION}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - DYNAMODB_TABLE_NAME=${DYNAMODB_TABLE_NAME}
+      - REDIS_HOST=redis  # Set the Redis hostname to the service name
+    depends_on:
+      - redis
+
+  socket:
+    build:
+      context: ./socket
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  mongo-data:

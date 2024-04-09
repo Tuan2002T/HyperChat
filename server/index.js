@@ -2,8 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const mongoose = require("mongoose");
 
-
-
 const userRoute = require("./Routes/userRoute");
 const chatRoute = require("./Routes/chatRoute");
 const messageRoute = require("./Routes/messageRoute");
@@ -25,7 +23,6 @@ const uri = process.env.ATLATS_URI;
 app.listen(port , (req, res) => {
     console.log("Server is running on port...:",port);
 });
-
 
 mongoose.connect(uri).then(() => {console.log("Database connected...")}).catch((err) => console.log("MongdoDB connection failed: ",err.message));
 
