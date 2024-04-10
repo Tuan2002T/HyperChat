@@ -111,12 +111,20 @@ io.on('connection', (socket) => {
     });
 
   });
-
   socket.on('retrieveMessages', ({ roomId, updatedMessages }) => {
     console.log('updatedMessages', updatedMessages);
     const room = rooms[roomId];
     room.socket.forEach(socketId => {
       io.to(socketId).emit('retrievedMessageRecall', updatedMessages);
+    });
+  });
+
+
+  socket.on('deleteMessages', ({ roomId, updatedMessages }) => {
+    console.log('updatedMessages', updatedMessages);
+    const room = rooms[roomId];
+    room.socket.forEach(socketId => {
+      io.to(socketId).emit('deletedMessageRecall', updatedMessages);
     });
   });
 
