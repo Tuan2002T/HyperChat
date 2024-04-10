@@ -19,7 +19,15 @@ const messageSchema = new mongoose.Schema({
     chatPrivate: {
         type: Schema.Types.ObjectId,
         ref: 'ChatPrivate',
-    }
+    },
+    views: [
+        {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            default: []
+        }
+    ],
+
 }, {
     timestamps: true
 });

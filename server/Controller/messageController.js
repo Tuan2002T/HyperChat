@@ -48,7 +48,7 @@ function checkFileType(file, callback) {
 const sendMessage = async (req, res) => {
   try {
     const { sender, messageText, chatGroupId, chatPrivateId } = req.body;
-    
+    let views = [];
     const user = await userModel.findById(sender);
     let img = req.file;
     if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại' });
@@ -81,7 +81,7 @@ const sendMessage = async (req, res) => {
         }
 
         console.log('img', img);
-
+        views = chat.members
     const newMessage = new messageModel({
       sender,
       content: {
@@ -90,11 +90,12 @@ const sendMessage = async (req, res) => {
       },
       chatGroup: chatGroupId,
       chatPrivate: chatPrivateId,
+      views: views,
     });
 
     const savedMessage = await newMessage.save();
     await chat.updateOne({ $push: { messages: savedMessage._id } });
-    res.status(200).json({files: savedMessage.content.files, id : savedMessage._id});
+    res.status(200).json({files: savedMessage.content.files, id : savedMessage._id, views: views});
   } catch (error) {
     console.log('Error:', error.message);
     res.status(500).json({ message: error.message });
@@ -107,11 +108,11 @@ const getAllMessagesByChatId = async (req, res) => {
       console.log('chatId', chatId);
       let chatMessages = [];
       
-      const chat = await chatGroupModel.findById(chatId).populate('messages', 'sender content createdAt');
+      const chat = await chatGroupModel.findById(chatId).populate('messages', 'sender content views createdAt');
       if (chat) {
           chatMessages = chat.messages;
       } else {
-          const chat2 = await chatPrivateModel.findById(chatId).populate('messages', 'sender content createdAt');
+          const chat2 = await chatPrivateModel.findById(chatId).populate('messages', 'sender content views createdAt');
           if (chat2) {
               chatMessages = chat2.messages;
           } else {
@@ -149,35 +150,80 @@ const retrieveMessages = async (req, res) => {
 
 const deleteMessage = async (req, res) => {
   try {
-    const { messageId } = req.params;
-    const message = await messageModel
-      .findById(messageId)
-      .populate('chatGroup chatPrivate', 'members');
+    const { messageId, userId } = req.body;
+    const message = await messageModel.findById(messageId)
 
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
 
-    const chat = message.chatGroup || message.chatPrivate;
-    const user = req.user;
-
-    if (!chat.members.includes(user._id)) {
-      return res.status(403).json({ error: 'You are not a member of this chat' });
+    if (message.sender.toString() == userId) {
+      message.views = message.views.filter(viewId => viewId.toString() !== userId);
     }
 
-    await message.delete();
-    res.status(200).json({ message: 'Message deleted' });
+    await message.save();
+    res.status(200).json(message);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
+
+const forwardMessages = async (req, res) => {
+  try {
+    const { sender, chatGroupId, chatPrivateId, messageId } = req.body;
+    let views = [];
+    const user = await userModel.findById(sender);
+
+    if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại' });
+
+    const originalMessage = await messageModel.findById(messageId);
+
+    if (!originalMessage) {
+      return res.status(404).json({ error: 'Tin nhắn không tồn tại' });
+    }
+
+    let chat;
+    if (chatGroupId) {
+      chat = await chatGroupModel.findById(chatGroupId);
+      if (!chat) {
+        return res.status(404).json({ error: 'Chat nhóm không tồn tại' });
+      }
+    } else if (chatPrivateId) {
+      chat = await chatPrivateModel.findById(chatPrivateId);
+      if (!chat) {
+        return res.status(404).json({ error: 'Chat không tồn tại' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Cần có chatGroupId hoặc chatPrivateId' });
+    }
+
+    views = chat.members;
+    const newMessage = new messageModel({
+      sender,
+      content: originalMessage.content,
+      chatGroup: chatGroupId,
+      chatPrivate: chatPrivateId,
+      views: views,
+    });
+
+    const savedMessage = await newMessage.save();
+    await chat.updateOne({ $push: { messages: savedMessage._id } });
+    res.status(200).json({ files: savedMessage.content.files, id: savedMessage._id, views, text: savedMessage.content.text });
+  } catch (error) {
+    console.log('Error:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
 const sendMessages = async (req, res) => {
   try {
     const { sender, messageText, chatGroupId, chatPrivateId } = req.body;
     const user = await userModel.findById(sender);
-    
+    let views = [];
     let imgs = req.files; // Đổi từ req.file thành req.files để hỗ trợ upload nhiều ảnh
 
     if (!user) return res.status(404).json({ message: 'Người dùng không tồn tại' });
@@ -233,7 +279,7 @@ const sendMessages = async (req, res) => {
 };
 
 
-module.exports = {sendMessage: [upload.single('files'), sendMessage],sendMessages: [upload.array('files', 10), sendMessages], getAllMessagesByChatId, deleteMessage, retrieveMessages};
+module.exports = {sendMessage: [upload.single('files'), sendMessage],sendMessages: [upload.array('files', 10), sendMessages], getAllMessagesByChatId, deleteMessage, retrieveMessages, forwardMessages};
 
 
 
