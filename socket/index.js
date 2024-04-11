@@ -60,6 +60,17 @@ io.on('connection', (socket) => {
     console.log('Danh sách người dùng trực tuyến : ', onlineUsers.map(user => user));
   });
 
+  socket.on('userOffline', (userId) => {
+    console.log(`Người dùng của socket ${userId} đã offline`);
+    const index = onlineUsers.findIndex(user => user.userId === userId);
+    if (index !== -1) {
+      onlineUsers.splice(index, 1);
+      io.emit('onlineUsers', onlineUsers.map(user => user.userId)); // Gửi danh sách người dùng trực tuyến tới tất cả client
+    }
+    console.log('Danh sách người dùng trực tuyến : ', onlineUsers.map(user => user.userId));
+  }
+  );
+
   socket.on('listOnlineUsers', () => {
     socket.emit('onlineUsers', onlineUsers.map(user => user.userId));
   });
@@ -159,7 +170,7 @@ io.on('connection', (socket) => {
       console.log(`Người dùng ${receiverId} không trực tuyến`);
     }
   });
-
+  
 
   // Bắt sự kiện ngắt kết nối của người dùng
   socket.on('disconnect', () => {
@@ -175,6 +186,7 @@ io.on('connection', (socket) => {
       if (room.socket.length <= 0)
         socket.emit('deleteRoom', room.id)
     });
+    console.log('Thiết bị đã ngắt kểt nối')
     console.log('Danh sách người dùng trực tuyến : ', onlineUsers.map(user => user.userId));
   });
 });
