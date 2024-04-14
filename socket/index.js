@@ -170,7 +170,6 @@ io.on('connection', (socket) => {
       console.log(`Người dùng ${receiverId} không trực tuyến`);
     }
   });
-  
 
   // Bắt sự kiện ngắt kết nối của người dùng
   socket.on('disconnect', () => {

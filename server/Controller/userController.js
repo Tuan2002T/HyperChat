@@ -274,7 +274,6 @@ const updateUser = async (req, res) => {
                 Body: avatar.buffer,
                 ContentType: avatar.mimetype,
             };
-
             const data = await s3.upload(paramsS3).promise();
             user.avatar = data.Location;
         }

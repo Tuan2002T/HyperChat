@@ -44,13 +44,23 @@ const getAllChatGroupByUserId = async (req, res) => {
 
 const addMembersToChatGroup = async (req, res) => {
     try {
-        const { chatGroupId, members } = req.body;
+        const admin = req.params.userId;
+        const { chatGroupId, members} = req.body;
+        console.log(members);
+        console.log(admin);
+        console.log(chatGroupId);
+        if (!admin) {
+            return res.status(400).json({ message: "Cần nhập đầy đủ thông tin" });
+        }
         if (!chatGroupId || !members) { 
             return res.status(400).json({ message: "Cần nhập đầy đủ thông tin" });
         }
         const chatGroup = await chatGroupModel.findById(chatGroupId);
         if (!chatGroup) {
             return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
+        }
+        if (!chatGroup.admin.includes(admin)) {
+            return res.status(400).json({ message: "Bạn không phải là admin của nhóm chat" });
         }
         members.forEach(async (memberId) => {
             if (chatGroup.members.includes(memberId)) {
@@ -59,6 +69,29 @@ const addMembersToChatGroup = async (req, res) => {
             await userModel.findByIdAndUpdate(memberId, { $push: { chatGroups: chatGroupId } })
         });
         chatGroup.members.push(...members);
+        await chatGroup.save();
+        res.status(200).json(chatGroup);
+    }
+    catch (error) {
+        console.log('Lỗi tìm chatgroup', error);
+        res.status(404).json({ message: error.message });
+    }
+}
+
+const addAdminToChatGroup = async (req, res) => {
+    try {
+        const { chatGroupId, admin } = req.body;
+        if (!chatGroupId || !admin) {
+            return res.status(400).json({ message: "Cần nhập đầy đủ thông tin" });
+        }
+        const chatGroup = await chatGroupModel.findById(chatGroupId);
+        if (!chatGroup) {
+            return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
+        }
+        if (chatGroup.admin.includes(admin)) {
+            return res.status(400).json({ message: "Người dùng đã là admin của nhóm chat" });
+        }
+        chatGroup.admin.push(admin);
         await chatGroup.save();
         res.status(200).json(chatGroup);
     }
