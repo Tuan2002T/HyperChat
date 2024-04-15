@@ -404,5 +404,17 @@ const changePassword = async (req, res) => {
     }
 }
 
+const allFriendRequestSent = async (req, res) => {
+    try {
+        const {userId} = req.params;
+        const friends = await friendsModel.find({sender: userId});
+        res.status(200).json(friends);
+    }
+    catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: error.message });
+    } 
+}
 
-module.exports = { sendOTP,verifyOTPAndRegister ,loginUser, getUsers, findUser, findUserByPhoneNumber, updateUser, listFriends, upload ,sendOTPForgotPassword, verifyOTPForgotPassword, getListChats, changePassword};
+
+module.exports = { sendOTP,verifyOTPAndRegister ,loginUser, getUsers, findUser, findUserByPhoneNumber, updateUser, listFriends, upload ,sendOTPForgotPassword, verifyOTPForgotPassword, getListChats, changePassword, allFriendRequestSent};

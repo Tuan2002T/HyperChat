@@ -45,38 +45,45 @@ const getAllChatGroupByUserId = async (req, res) => {
 const addMembersToChatGroup = async (req, res) => {
     try {
         const admin = req.params.userId;
-        const { chatGroupId, members} = req.body;
-        console.log(members);
-        console.log(admin);
-        console.log(chatGroupId);
-        if (!admin) {
-            return res.status(400).json({ message: "Cần nhập đầy đủ thông tin" });
+        const { chatGroupId, members } = req.body;
+
+        if (!admin || !chatGroupId || !members) {
+            return res.status(400).json({ error: "Cần nhập đầy đủ thông tin" });
         }
-        if (!chatGroupId || !members) { 
-            return res.status(400).json({ message: "Cần nhập đầy đủ thông tin" });
-        }
+
         const chatGroup = await chatGroupModel.findById(chatGroupId);
         if (!chatGroup) {
-            return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
+            return res.status(400).json({ error: "Không tìm thấy ChatGroup " });
         }
+
         if (!chatGroup.admin.includes(admin)) {
-            return res.status(400).json({ message: "Bạn không phải là admin của nhóm chat" });
+            return res.status(400).json({ error: "Bạn không phải là admin của nhóm chat" });
         }
-        members.forEach(async (memberId) => {
-            if (chatGroup.members.includes(memberId)) {
-                return res.status(400).json({ message: "Một trong các người dùng đã tồn tại trong nhóm chat" });
-            }    
-            await userModel.findByIdAndUpdate(memberId, { $push: { chatGroups: chatGroupId } })
-        });
+
+        for (const memberId of members) {
+            if (chatGroup.members.some(member => member.equals(memberId))) {
+                return res.status(400).json({ error: "Một trong các người dùng đã tồn tại trong nhóm chat" });
+            }
+
+            // Kiểm tra sự tồn tại của thành viên trong cơ sở dữ liệu trước khi thêm vào nhóm chat
+            const existingUser = await userModel.findById(memberId);
+            if (!existingUser) {
+                return res.status(400).json({ error: `Người dùng có ID ${memberId} không tồn tại` });
+            }
+
+            await userModel.findByIdAndUpdate(memberId, { $push: { chatGroups: chatGroupId } });
+        }
+
         chatGroup.members.push(...members);
         await chatGroup.save();
+
         res.status(200).json(chatGroup);
-    }
-    catch (error) {
-        console.log('Lỗi tìm chatgroup', error);
-        res.status(404).json({ message: error.message });
+    } catch (error) {
+        console.log('Lỗi khi thêm thành viên vào nhóm chat:', error);
+        res.status(500).json({ error: "Đã xảy ra lỗi khi thực hiện yêu cầu" });
     }
 }
+
 
 const addAdminToChatGroup = async (req, res) => {
     try {
@@ -129,7 +136,8 @@ const deleteMembersChatGroup = async (req, res) => {
         
 const deleteChatGroup = async (req, res) => {
     try {
-        const {admin, chatGroup} = req.body;
+        const admin = req.params.userId;
+        const {chatGroup} = req.body;
         const deleteChatGroup = await chatGroupModel.findById(chatGroup);
         let checkAdmin = deleteChatGroup.admin.filter(adminId => adminId.toString() === admin);
         if (!deleteChatGroup) {
@@ -168,4 +176,20 @@ const outChatGroup = async (req, res) => {
     }
 }
 
-module.exports = { createChatGroup, getAllChatGroupByUserId, addMembersToChatGroup, deleteMembersChatGroup , deleteChatGroup, outChatGroup};
+const findChatGroupById = async (req, res) => {
+    try {
+        const chatGroupId = req.params.chatGroupId;
+        const chatGroup = await chatGroupModel.findById(chatGroupId);
+        if (!chatGroup) {
+            return res.status(404).json({ message: "Không tìm thấy ChatGroup " });
+        }
+        res.status(200).json(chatGroup);
+    }
+    catch (error) {
+        console.log('Lỗi tìm chatgroup', error);
+        res.status(404).json({ message: error.message });
+    }
+
+}
+
+module.exports = { createChatGroup, getAllChatGroupByUserId, addMembersToChatGroup, deleteMembersChatGroup , deleteChatGroup, outChatGroup, findChatGroupById, addAdminToChatGroup};

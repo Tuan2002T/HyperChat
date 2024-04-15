@@ -278,8 +278,51 @@ const sendMessages = async (req, res) => {
   }
 };
 
+const notificationMessage = async (req, res) => {
+  try {
+    const {chatGroupId, chatPrivateId, notification } = req.body;
+    let views = [];
+    let chat;
+    if (chatGroupId) {
+      chat = await chatGroupModel.findById(chatGroupId);
+      if (!chat) {
+        return res.status(404).json({ error: 'Chat nhóm không tồn tại' });
+      }
+    } else if (chatPrivateId) {
+      chat = await chatPrivateModel.findById(chatPrivateId);
+      if (!chat) {
+        return res.status(404).json({ error: 'Chat không tồn tại' });
+      }
+    } else {
+      return res.status(400).json({ error: 'Cần có chatGroupId hoặc chatPrivateId' });
+    }
+ 
+        views = chat.members
+      const newMessage = new messageModel({
+        sender: '661d1385d6a1bd134332a7f6',
+        content: {
+        text: notification,
+        files: [],
+      },
+      chatGroup: chatGroupId,
+      chatPrivate: chatPrivateId,
+      views: views,
+      notification: true
+    });
 
-module.exports = {sendMessage: [upload.single('files'), sendMessage],sendMessages: [upload.array('files', 10), sendMessages], getAllMessagesByChatId, deleteMessage, retrieveMessages, forwardMessages};
+    const savedMessage = await newMessage.save();
+    await chat.updateOne({ $push: { messages: savedMessage._id } });
+    res.status(200).json({id : savedMessage._id, views: views});
+  } catch (error) {
+    console.log('Error:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
+module.exports = {sendMessage: [upload.single('files'), sendMessage],sendMessages: [upload.array('files', 10), sendMessages], getAllMessagesByChatId, deleteMessage, retrieveMessages, forwardMessages, notificationMessage};
 
 
 
