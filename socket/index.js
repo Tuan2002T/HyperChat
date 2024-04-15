@@ -46,7 +46,12 @@
 
 const { Server } = require("socket.io");
 
-const io = new Server();
+const io = new Server({
+  cors: {
+    origin: "*", // Cho phép kết nối từ tất cả các nguồn
+    methods: ["GET", "POST"] // Cho phép các phương thức HTTP
+  }
+});
 
 const onlineUsers = [];
 const rooms = [];
