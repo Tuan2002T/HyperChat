@@ -93,10 +93,10 @@ const deleteMembersChatGroup = async (req, res) => {
         if (!chatGroup) {
             return res.status(404).json({ error: "Không tìm thấy nhóm chat." });
         }
-        if(!chatGroup.admin.includes(admin)){
+        if (!chatGroup.admin.includes(admin)) {
             return res.status(400).json({ error: "Bạn không phải là admin của nhóm chat" });
         }
-        if(!chatGroup.members.includes(members)){
+        if (!chatGroup.members.includes(members)) {
             return res.status(400).json({ error: "Người dùng không tồn tại trong nhóm chat" });
         }
         const updateMember = chatGroup.members.filter(memberId => !members.includes(memberId.toString()));
@@ -137,9 +137,9 @@ const addAdminToChatGroup = async (req, res) => {
         if (!chatGroup.admin.includes(admin)) {
             return res.status(400).json({ error: "Bạn không phải admin của nhóm" });
         }
-        if(chatGroup.admin.includes(memberId)){
+        if (chatGroup.admin.includes(memberId)) {
             return res.status(400).json({ error: "Người dùng đã là admin của nhóm chat" });
-}
+        }
         chatGroup.admin.push(memberId);
         await chatGroup.save();
         res.status(200).json(chatGroup);
@@ -165,13 +165,13 @@ const deleteAdminToChatGroup = async (req, res) => {
         if (!chatGroup.members.includes(memberId)) {
             return res.status(400).json({ error: "Người dùng không tồn tại trong nhóm chat" });
         }
-        if (!chatGroup.admin.includes(admin)) { 
+        if (!chatGroup.admin.includes(admin)) {
             return res.status(400).json({ error: "Người dùng không phải là admin của nhóm chat" });
         }
         if (!chatGroup.admin.includes(admin)) {
             return res.status(400).json({ error: "Bạn không phải admin của nhóm" });
         }
-        if(!chatGroup.admin.includes(memberId)){
+        if (!chatGroup.admin.includes(memberId)) {
             return res.status(400).json({ error: "Người dùng không phải là admin của nhóm chat" });
         }
         chatGroup.admin = chatGroup.admin.filter(adminId => adminId.toString() !== memberId);
@@ -218,25 +218,14 @@ const outChatGroup = async (req, res) => {
             return res.status(404).json({ error: "Không tìm thấy nhóm chat." });
         }
 
-        // Kiểm tra xem người dùng đang xóa có phải là admin hay không
-        const isUserAdmin = chatGroup.admin.toString() === userId;
-
-        const updateMember = chatGroup.members.filter(
-            (memberId) => memberId.toString() !== userId
-        );
-        chatGroup.members = updateMember;
-
-        // Nếu người dùng đang xóa là admin, ta cần chỉ định một thành viên khác làm admin mới
-        if (isUserAdmin) {
-            // Nếu còn thành viên khác trong nhóm, chọn ngẫu nhiên một thành viên làm admin mới
-            if (updateMember.length > 0) {
-                const randomIndex = Math.floor(Math.random() * updateMember.length);
-                chatGroup.admin = updateMember[randomIndex];
-            } else {
-                // Nếu không còn thành viên nào trong nhóm, đặt admin là null
-                chatGroup.admin = null;
-            }
+        if (chatGroup.admin.includes(userId)) {
+            chatGroup.admin = chatGroup.admin.filter(adminId => adminId.toString() !== userId);
         }
+        if (!chatGroup.members.includes(userId)) {
+            return res.status(400).json({ error: "Người dùng không tồn tại trong nhóm chat" });
+        }
+        chatGroup.members = chatGroup.members.filter(memberId => memberId.toString() !== userId);
+        // Nếu người dùng đang xóa là admin, ta cần chỉ định một thành viên khác làm admin mới
 
         await chatGroup.save();
         await userModel.findByIdAndUpdate(userId, {

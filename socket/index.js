@@ -176,6 +176,37 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('acceptFriendRequest', ({ senderId, receiverId }) => {
+    const senderSocket = onlineUsers.find(user => user.userId === senderId);
+    if (senderSocket) {
+      io.to(senderSocket.id).emit('acceptedFriendRequest', receiverId);
+      console.log(`Đã chấp nhận yêu cầu kết bạn từ ${receiverId} tới ${senderId}`);
+    } else {
+      console.log(`Người dùng ${senderId} không trực tuyến`);
+    }
+  });
+
+  // socket.on('deleteFriendRequest', ({ senderId, receiverId }) => {
+  //   const senderSocket = onlineUsers.find(user => user.userId === senderId);
+  //   if (senderSocket) {
+  //     io.to(senderSocket.id).emit('deletedFriendRequest', receiverId);
+  //     console.log(`Đã xóa yêu cầu kết bạn từ ${receiverId} tới ${senderId}`);
+  //   } else {
+  //     console.log(`Người dùng ${senderId} không trực tuyến`);
+  //   }
+  // });
+
+    socket.on('unFriend', ({ senderId, receiverId }) => {
+    const receiverSocket = onlineUsers.find(user => user.userId === receiverId);
+    if (receiverSocket) {
+      io.to(receiverSocket.id).emit('undedFriend', senderId);
+      console.log(`Đã xóa bạn bè từ ${senderId} tới ${receiverId}`);
+    } else {
+      console.log(`Người dùng ${receiverId} không trực tuyến`);
+    }
+  });
+
+
   socket.on('addMemberChatGroup', ({ roomId, members }) => {
     const room = rooms[roomId];
     members.forEach(member => {
@@ -196,7 +227,130 @@ io.on('connection', (socket) => {
       });
     });
 
+    onlineUsers.forEach(user => {
+      console.log('rooommmm', room.members);
+      room.members.forEach(member => {
+        if (member === user.userId) {
+          io.to(user.id).emit('addChatGroupForMemberShow', members);
+        }
+      });
+    });
+
     console.log(`Đã thêm thành viên vào phòng chat ${roomId}`);
+  });
+  socket.on('deleteMemberChatGroup', ({ roomId, members }) => {
+    const room = rooms[roomId];
+    members.forEach(member => {
+      const index = room.members.indexOf(member);
+      if (index !== -1) {
+        room.members.splice(index, 1);
+      }
+    });
+    onlineUsers.forEach(user => {
+      members.forEach(member => {
+        if (member === user.userId) {
+          console.log('cần gửi đến đây neffff??');
+          io.to(user.id).emit('deleteChatGroupForMember', roomId);
+        }
+      });
+    });
+    onlineUsers.forEach(user => {
+      members.forEach(member => {
+        if (member === user.userId) {
+          console.log('cần gửi đến đây neffff??');
+          io.to(user.id).emit('deletedChatGroupForMember', members);
+        }
+      });
+    });
+
+    console.log(`Đã xóa thành viên khỏi phòng chat ${roomId}`);
+  });
+
+
+  socket.on('addAdmin', ({ roomId, members, chat }) => {
+
+    console.log('chat', chat);
+    console.log('members', members);
+    console.log('roomId', roomId);
+    const room = rooms[roomId];
+    onlineUsers.forEach(user => {
+      room.members.forEach(member => {
+        if (member === user.userId) {
+          console.log('cần gửi đến đây ??');
+          io.to(user.id).emit('addAdminChatGroup', {chat, roomId});
+        }
+      });
+    });
+
+    onlineUsers.forEach(user => {
+      members.forEach(member => {
+        if (member === user.userId) {
+          console.log('cần gửi đến đây ??');
+          io.to(user.id).emit('addAdminChatGroupForMember', chat);
+        }
+      });
+    }
+    );
+  });
+
+  socket.on('deleteAdmin', ({ roomId, members, chat }) => {
+    const room = rooms[roomId];
+    onlineUsers.forEach(user => {
+      room.members.forEach(member => {
+        if (member === user.userId) {
+          io.to(user.id).emit('deleteAdminChatGroup', {members, roomId});
+        }
+      });
+    });
+
+    onlineUsers.forEach(user => {
+      members.forEach(member => {
+        if (member === user.userId) {
+          console.log('cần gửi đến đây ??');
+          io.to(user.id).emit('deleteAdminChatGroupForMember', chat);
+        }
+      });
+    }
+    );
+  });
+
+  socket.on('outGroup', ({ roomId, currentId }) => {
+    const room = rooms[roomId];
+    const index = room.members.indexOf(currentId);
+    if (index !== -1) {
+      room.members.splice(index, 1);
+    }
+    onlineUsers.forEach(user => {
+      if (currentId === user.userId) {
+        io.to(user.id).emit('outedGroup', roomId);
+      }
+    });
+  })
+
+  socket.on('deleteGroup', ({ roomId}) => {
+    const room = rooms[roomId];
+    room.socket.forEach(socketId => {
+      io.to(socketId).emit('deletedGroup', roomId);
+    });
+    onlineUsers.forEach(user => {
+      room.members.forEach(member => {
+        if (member === user.userId) {
+          io.to(user.id).emit('deletedGroupForMember', roomId);
+        }
+      });
+    });
+    delete rooms[roomId];
+  });
+
+  socket.on('createGroup', ({ newGroup }) => {
+    console.log('newGroup', newGroup);
+    onlineUsers.forEach(user => {
+      newGroup.members.forEach(member => {
+        if (member === user.userId) {
+          io.to(user.id).emit('createdGroup', newGroup);
+        }
+      });
+    });
   });
 
   // Bắt sự kiện ngắt kết nối của người dùng
