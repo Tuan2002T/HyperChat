@@ -176,6 +176,29 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('addMemberChatGroup', ({ roomId, members }) => {
+    const room = rooms[roomId];
+    members.forEach(member => {
+      if (!room.members.includes(member)) {
+        room.members.push(member);
+      }
+    });
+    room.socket.forEach(socketId => {
+      io.to(socketId).emit('addedMemberChatGroup', roomId);
+    });
+
+    onlineUsers.forEach(user => {
+      members.forEach(member => {
+        if (member === user.userId) {
+          console.log('cần gửi đến đây ??');
+          io.to(user.id).emit('addChatGroupForMember', roomId);
+        }
+      });
+    });
+
+    console.log(`Đã thêm thành viên vào phòng chat ${roomId}`);
+  });
+
   // Bắt sự kiện ngắt kết nối của người dùng
   socket.on('disconnect', () => {
     console.log('Người dùng ngắt kết nối : ', socket.id);
