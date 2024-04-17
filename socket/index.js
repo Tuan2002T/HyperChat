@@ -105,6 +105,12 @@ io.on('connection', (socket) => {
     console.log('messageId', messageId);
     console.log('room', rooms[roomId]);
     const room = rooms[roomId];
+    
+  if (!room) {
+    console.log(`Phòng chat với ID ${roomId} không tồn tại hoặc không có người dùng online.`);
+    // Có thể thêm hành động khác tại đây, ví dụ: gửi thông báo lỗi cho client
+    return;
+  }
     console.log('room', room.socket);
     console.log('ảnh đã gửi', image);
     console.log('video đã gửi', video);
@@ -239,6 +245,8 @@ io.on('connection', (socket) => {
     console.log(`Đã thêm thành viên vào phòng chat ${roomId}`);
   });
   socket.on('deleteMemberChatGroup', ({ roomId, members }) => {
+    console.log('members', members);
+    console.log('roomId', roomId);
     const room = rooms[roomId];
     members.forEach(member => {
       const index = room.members.indexOf(member);
@@ -263,6 +271,14 @@ io.on('connection', (socket) => {
       });
     });
 
+    onlineUsers.forEach(user => {
+      room.members.forEach(member => {
+        if (member === user.userId) {
+          console.log('cần gửi đến đây neffff?>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>');
+          io.to(user.id).emit('deleteChatGroupForMemberShow', members);
+        }
+      });
+    });
     console.log(`Đã xóa thành viên khỏi phòng chat ${roomId}`);
   });
 
@@ -317,9 +333,14 @@ io.on('connection', (socket) => {
   socket.on('outGroup', ({ roomId, currentId }) => {
     const room = rooms[roomId];
     const index = room.members.indexOf(currentId);
+    const socketIndex = room.socket.indexOf(socket.id);
+    if (socketIndex !== -1) {
+      room.socket.splice(socketIndex, 1);
+    }
     if (index !== -1) {
       room.members.splice(index, 1);
     }
+    console.log('roommmmm', room);
     onlineUsers.forEach(user => {
       if (currentId === user.userId) {
         io.to(user.id).emit('outedGroup', roomId);
