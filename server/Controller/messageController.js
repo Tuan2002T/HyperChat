@@ -108,11 +108,11 @@ const getAllMessagesByChatId = async (req, res) => {
       console.log('chatId', chatId);
       let chatMessages = [];
       
-      const chat = await chatGroupModel.findById(chatId).populate('messages', 'sender content views createdAt');
+      const chat = await chatGroupModel.findById(chatId).populate('messages', 'sender content views createdAt notification');
       if (chat) {
           chatMessages = chat.messages;
       } else {
-          const chat2 = await chatPrivateModel.findById(chatId).populate('messages', 'sender content views createdAt');
+          const chat2 = await chatPrivateModel.findById(chatId).populate('messages', 'sender content views createdAt notification');
           if (chat2) {
               chatMessages = chat2.messages;
           } else {
@@ -156,10 +156,8 @@ const deleteMessage = async (req, res) => {
     if (!message) {
       return res.status(404).json({ error: 'Message not found' });
     }
-
-    if (message.sender.toString() == userId) {
       message.views = message.views.filter(viewId => viewId.toString() !== userId);
-    }
+    
 
     await message.save();
     res.status(200).json(message);
@@ -280,7 +278,9 @@ const sendMessages = async (req, res) => {
 
 const notificationMessage = async (req, res) => {
   try {
-    const {chatGroupId, chatPrivateId, notification } = req.body;
+    const {chatGroupId, chatPrivateId, notification, userId } = req.body;
+    console.log('chatGroupId', chatGroupId);
+    console.log('chatPrivateId', chatPrivateId);
     let views = [];
     let chat;
     if (chatGroupId) {
@@ -299,7 +299,7 @@ const notificationMessage = async (req, res) => {
  
         views = chat.members
       const newMessage = new messageModel({
-        sender: '661d1385d6a1bd134332a7f6',
+        sender: userId,
         content: {
         text: notification,
         files: [],

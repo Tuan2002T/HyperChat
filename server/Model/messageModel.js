@@ -4,7 +4,6 @@ const messageSchema = new mongoose.Schema({
     sender: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
     },
     content: {
         text: {
@@ -27,7 +26,10 @@ const messageSchema = new mongoose.Schema({
             default: []
         }
     ],
-
+    notification: {
+        type: Boolean,
+        default: false
+    },
 }, {
     timestamps: true
 });

@@ -1,49 +1,3 @@
-
-// const { Server } = require("socket.io");
-
-// const io = new Server();
-
-// // Lưu trữ danh sách các phòng chat
-// const rooms = [];
-
-// io.on('connection', (socket) => {
-//   console.log('A user connected', socket.id);
-
-//   // Xử lý khi client tham gia phòng chat
-//   socket.on('joinRoom', (roomId) => {
-//     const room = rooms.find(r => r.id === roomId) || { id: roomId, clients: [] };
-//     room.clients.push(socket.id);
-//     console.log("rooms", room);
-//     socket.join(roomId);
-//     console.log(`Client ${socket.id} joined room ${roomId}`);
-//   });
-
-//   // Lắng nghe sự kiện gửi tin nhắn từ client
-//   socket.on('sendMessage', (data) => {
-//     const { roomId, message, senderId, createdAt  } = data;
-
-//     // Phát sóng tin nhắn đến tất cả các client trong cùng phòng chat
-//     io.to(roomId).emit('receiveMessage', { message, senderId, createdAt  });
-//     console.log(`Message sent to room ${roomId}: ${message} (from ${senderId})`);
-//   });
-//   socket.on('getRoomList', () => {
-//     socket.emit('roomList', rooms);
-//   });
-//   // Xử lý khi client ngắt kết nối
-//   socket.on('disconnect', () => {
-//     console.log('A user disconnected');
-//     // Xóa client khỏi các phòng chat
-//     rooms.forEach(room => {
-//       room.clients = room.clients.filter(client => client !== socket.id);
-//     });
-//   });
-// });
-
-// const PORT = 3000;
-// io.listen(PORT);
-// console.log(`Server is running on port ${PORT}`);
-
-
 const { Server } = require("socket.io");
 
 const io = new Server({
@@ -89,34 +43,45 @@ io.on('connection', (socket) => {
           room.members.push(member);
         }
       });
-      room.socket.push(socket.id);
+  
+      // Kiểm tra nếu socket.id đã tồn tại trong room.socket thì không push
+      if (!room.socket.includes(socket.id)) {
+        room.socket.push(socket.id);
+      }
     } else {
-      rooms[roomId] = { members, socket: [socket.id] };
+      rooms[roomId] = {
+        roomId,
+        members,
+        socket: [socket.id]
+      };
     }
+  
     socket.join(roomId);
     console.log(`Người dùng ${socket.id} đã tham gia phòng chat ${roomId}`);
     console.log('Danh sách phòng chat : ', rooms);
   });
 
-
+  socket.on('listRooms', () => {
+    socket.emit('rooms', Object.values(rooms));  // Gửi danh sách các phòng chat về client
+  });
 
   socket.on('sendMessage', ({ roomId, message, senderId, image, video, file, createdAt, messageId }) => {
     console.log(`Người dùng ${senderId} đã gửi tin nhắn trong phòng chat ${roomId}: ${message}`);
     console.log('messageId', messageId);
     console.log('room', rooms[roomId]);
     const room = rooms[roomId];
-    
-  if (!room) {
-    console.log(`Phòng chat với ID ${roomId} không tồn tại hoặc không có người dùng online.`);
-    // Có thể thêm hành động khác tại đây, ví dụ: gửi thông báo lỗi cho client
-    return;
-  }
+
+    if (!room) {
+      console.log(`Phòng chat với ID ${roomId} không tồn tại hoặc không có người dùng online.`);
+      // Có thể thêm hành động khác tại đây, ví dụ: gửi thông báo lỗi cho client
+      return;
+    }
     console.log('room', room.socket);
     console.log('ảnh đã gửi', image);
     console.log('video đã gửi', video);
     console.log('Tin nhắn đã gửi', roomId, message, senderId, image, video, file, createdAt);
     room.socket.forEach(socketId => {
-      io.to(socketId).emit('receiveMessage', { message, senderId, image, video, file, createdAt, messageId  });
+      io.to(socketId).emit('receiveMessage', { message, senderId, image, video, file, createdAt, messageId });
     });
 
     onlineUsers.forEach(user => {
@@ -133,11 +98,34 @@ io.on('connection', (socket) => {
     });
 
   });
-  socket.on('retrieveMessages', ({ roomId, updatedMessages }) => {
-    console.log('updatedMessages', updatedMessages);
+
+  socket.on('sendNotification', ({ roomId, senderId, text}) => {
+    const room = rooms[roomId];
+    if(!room) {
+      console.log(`Phòng chat với ID ${roomId} không tồn tại hoặc không có người dùng online.`);
+      return;
+    }
+    room.socket.forEach(socketId => {
+      console.log('Text', text);
+      io.to(socketId).emit('receiveMessageNotification', { senderId, text });
+    });
+
+    // onlineUsers.forEach(user => {
+    //   room.members.forEach(member => {
+    //     if (member === user.userId && user.userId !== senderId) {
+    //       const mss = 'Bạn có thông báo mới từ ' + senderId;
+    //       io.to(user.id).emit('receiveNotification', mss);
+    //       console.log('Đã gửi thông báo đến người dùng', user.id + 'với nội dung ' + mss);
+    //     }
+    //   });
+    // })
+  });
+
+  socket.on('retrieveMessages', ({ roomId, ms }) => {
+    console.log('updatedMessages', ms);
     const room = rooms[roomId];
     room.socket.forEach(socketId => {
-      io.to(socketId).emit('retrievedMessageRecall', updatedMessages);
+      io.to(socketId).emit('retrievedMessageRecall', ms);
     });
   });
 
@@ -168,6 +156,22 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} đã rời khỏi phòng chat ${roomId}`);
       }
     }
+    console.log('Danh sách phòng chat : ', rooms);
+  });
+
+  socket.on('leaveAllRooms', () => {
+    const socketId = socket.id;
+  
+    // Lặp qua danh sách các phòng chat
+    Object.values(rooms).forEach(room => {
+      // Loại bỏ socket ra khỏi danh sách socket của phòng chat
+      const index = room.socket.indexOf(socketId);
+      if (index !== -1) {
+        room.socket.splice(index, 1);
+        console.log(`Socket ${socketId} đã rời khỏi phòng chat ${room.roomId}`);
+      }
+    });
+  
     console.log('Danh sách phòng chat : ', rooms);
   });
 
@@ -202,7 +206,7 @@ io.on('connection', (socket) => {
   //   }
   // });
 
-    socket.on('unFriend', ({ senderId, receiverId }) => {
+  socket.on('unFriend', ({ senderId, receiverId }) => {
     const receiverSocket = onlineUsers.find(user => user.userId === receiverId);
     if (receiverSocket) {
       io.to(receiverSocket.id).emit('undedFriend', senderId);
@@ -293,7 +297,7 @@ io.on('connection', (socket) => {
       room.members.forEach(member => {
         if (member === user.userId) {
           console.log('cần gửi đến đây ??');
-          io.to(user.id).emit('addAdminChatGroup', {chat, roomId});
+          io.to(user.id).emit('addAdminChatGroup', { chat, roomId });
         }
       });
     });
@@ -314,7 +318,7 @@ io.on('connection', (socket) => {
     onlineUsers.forEach(user => {
       room.members.forEach(member => {
         if (member === user.userId) {
-          io.to(user.id).emit('deleteAdminChatGroup', {members, roomId});
+          io.to(user.id).emit('deleteAdminChatGroup', { members, roomId });
         }
       });
     });
@@ -348,7 +352,7 @@ io.on('connection', (socket) => {
     });
   })
 
-  socket.on('deleteGroup', ({ roomId}) => {
+  socket.on('deleteGroup', ({ roomId }) => {
     const room = rooms[roomId];
     room.socket.forEach(socketId => {
       io.to(socketId).emit('deletedGroup', roomId);
