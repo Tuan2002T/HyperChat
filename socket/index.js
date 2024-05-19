@@ -76,7 +76,7 @@ io.on('connection', (socket) => {
       // Có thể thêm hành động khác tại đây, ví dụ: gửi thông báo lỗi cho client
       return;
     }
-    console.log('room', room.socket);
+    console.log('room', room.socket); 
     console.log('ảnh đã gửi', image);
     console.log('video đã gửi', video);
     console.log('Tin nhắn đã gửi', roomId, message, senderId, image, video, file, createdAt);
@@ -87,10 +87,16 @@ io.on('connection', (socket) => {
     onlineUsers.forEach(user => {
       room.members.forEach(member => {
         if (member === user.userId && user.userId !== senderId) {
-          const mss = 'Bạn có tin nhắn mới từ ' + senderId;
-          console.log(user.id);
-          io.to(user.id).emit('receiveNotification', mss);
-          console.log('Đã gửi thông báo đến người dùng', user.id + 'với nội dung ' + mss);
+          io.to(user.id).emit('receiveNotification', {senderId, roomId, createdAt});
+        }
+      }
+      );
+
+    });
+    onlineUsers.forEach(user => {
+      room.members.forEach(member => {
+        if (member === user.userId) {
+          io.to(user.id).emit('sortChat', {senderId, roomId, createdAt});
         }
       }
       );
@@ -297,7 +303,7 @@ io.on('connection', (socket) => {
       room.members.forEach(member => {
         if (member === user.userId) {
           console.log('cần gửi đến đây ??');
-          io.to(user.id).emit('addAdminChatGroup', { chat, roomId });
+          io.to(user.id).emit('addAdminChatGroup', { members, roomId });
         }
       });
     });
@@ -352,7 +358,7 @@ io.on('connection', (socket) => {
     });
   })
 
-  socket.on('deleteGroup', ({ roomId }) => {
+  socket.on('deleteGroup', ({ roomId, name }) => {
     const room = rooms[roomId];
     room.socket.forEach(socketId => {
       io.to(socketId).emit('deletedGroup', roomId);
@@ -360,7 +366,7 @@ io.on('connection', (socket) => {
     onlineUsers.forEach(user => {
       room.members.forEach(member => {
         if (member === user.userId) {
-          io.to(user.id).emit('deletedGroupForMember', roomId);
+          io.to(user.id).emit('deletedGroupForMember', {name, roomId});
         }
       });
     });
