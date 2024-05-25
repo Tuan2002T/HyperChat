@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
     },
     avatar: {
         type: String,
-        default: "https://hyperchatimage.s3.ap-southeast-1.amazonaws.com/default_image.jpg"
+        default: "https://hyperchat1.s3.ap-southeast-1.amazonaws.com/avatar_defau.png"
     },
     friends: [
         {

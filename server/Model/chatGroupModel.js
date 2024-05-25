@@ -26,7 +26,7 @@ const chatGroupSchema = new mongoose.Schema({
     ],
     avatar: {
         type: String,
-        default: "https://hyperchatimage.s3.ap-southeast-1.amazonaws.com/avatar-group.png"
+        default: "https://hyperchat1.s3.ap-southeast-1.amazonaws.com/avatar_group_defau.png"
     }
 }, {
     timestamps: true

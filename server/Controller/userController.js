@@ -126,6 +126,7 @@ const sendMailOTP = async (req, res) => {
         res.json({ message: 'OTP sent successfully' });
       }
     });
+    console.log("OTP: ", otp);
     res.status(200).json({ message: "Mã OTP đã được gửi đến email của bạn." });
   }
   catch (error) {
@@ -174,7 +175,7 @@ const verifyOTPRg = async (req, res) => {
         // Xóa mã OTP khỏi Redis
 
         const token = createToken(user._id);
-        res.status(200).json({ _id: user._id, user: userName, password, email, phoneNumber, fullname, birthday, token });
+        res.status(200).json({ _id: user._id, user: userName, password, email, phoneNumber, fullname, birthday, token, fullUser: user });
 
       }
       catch (error) {
