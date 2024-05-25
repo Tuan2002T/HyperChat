@@ -10,21 +10,21 @@ const sendFriendRequest = async (req, res) => {
         const checkFriendRequest = await friendsModel.findOne({ sender : receiver, receiver: sender });
 
         if (checkFriendRequest) {
-            return res.status(400).json({ error: "Người này đã gửi lời mời kết bạn đến bạn" });
+            return res.status(500).json({ error: "Người này đã gửi lời mời kết bạn đến bạn" });
         }
 
         if (checkFriend) {
-            return res.status(400).json({ error: "Đã kết bạn" });
+            return res.status(500).json({ error: "Đã kết bạn" });
         }
         if (sender === receiver) {
-            return res.status(400).json({ error: "Không thể gửi lời mời kết bạn cho chính mình" });
+            return res.status(500).json({ error: "Không thể gửi lời mời kết bạn cho chính mình" });
         }
         if (!user) {
-            return res.status(400).json({ error: "Người dùng không tồn tại" });
+            return res.status(500).json({ error: "Người dùng không tồn tại" });
         }
         const friend = await friendsModel.findOne({ sender, receiver });
         if (friend) { 
-            return res.status(400).json({ error: "Đã gửi lời mời kết bạn" });
+            return res.status(500).json({ error: "Đã gửi lời mời kết bạn" });
         }
         const newFriendRequest = new friendsModel({
             sender,

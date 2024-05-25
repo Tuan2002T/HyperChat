@@ -76,8 +76,13 @@ io.on('connection', (socket) => {
   });
 
   socket.on('joinRoom', (roomId, members) => {
+    console.log('roomId', roomId);
+    console.log('members', members);
+  
+    // Kiểm tra nếu room đã tồn tại trong danh sách phòng
     const room = rooms[roomId];
     if (room) {
+      // Thêm các thành viên vào room nếu họ chưa có trong danh sách members
       members.forEach(member => {
         if (!room.members.includes(member)) {
           room.members.push(member);
@@ -89,17 +94,20 @@ io.on('connection', (socket) => {
         room.socket.push(socket.id);
       }
     } else {
+      // Tạo mới một phòng nếu phòng chưa tồn tại
       rooms[roomId] = {
-        roomId,
-        members,
+        roomId: roomId, // Sử dụng roomId trực tiếp thay vì một đối tượng
+        members: members,
         socket: [socket.id]
       };
     }
   
+    // Tham gia phòng
     socket.join(roomId);
     console.log(`Người dùng ${socket.id} đã tham gia phòng chat ${roomId}`);
     console.log('Danh sách phòng chat : ', rooms);
   });
+  
 
   socket.on('listRooms', () => {
     socket.emit('rooms', Object.values(rooms));  // Gửi danh sách các phòng chat về client
@@ -222,15 +230,30 @@ io.on('connection', (socket) => {
   });
 
 
+  // socket.on('sendFriendRequest', ({ senderId, receiverId }) => {
+  //   // Tìm kiếm người dùng nhận yêu cầu kết bạn trong mảng onlineUsers
+  //   const receiverSocket = onlineUsers.find(user => user.userId === receiverId);
+  
+  //   if (receiverSocket) {
+  //     // Nếu người dùng nhận yêu cầu kết bạn đang trực tuyến
+  //     const { socketId } = receiverSocket;
+  
+  //     // Gửi sự kiện 'receiveFriendRequest' tới socket của người dùng đó
+  //     io.to(socketId).emit('receiveFriendRequest', senderId);
+  
+  //     console.log(`Đã gửi yêu cầu kết bạn từ ${senderId} tới ${receiverId}`);
+  //   } else {
+  //     // Nếu người dùng nhận yêu cầu kết bạn không trực tuyến
+  //     console.log(`Người dùng ${receiverId} không trực tuyến`);
+  //   }
+  // });
+
   socket.on('sendFriendRequest', ({ senderId, receiverId }) => {
-    const receiverSocket = onlineUsers.find(user => user.userId === receiverId);
-    if (receiverSocket) {
-      io.to(receiverSocket.id).emit('receiveFriendRequest', senderId);
-      console.log(`Đã gửi yêu cầu kết bạn từ ${senderId} tới ${receiverId}`);
-    } else {
-      console.log(`Người dùng ${receiverId} không trực tuyến`);
-    }
-  });
+      if(onlineUsers.find(d => d.userId === receiverId)) {
+        io.to(onlineUsers.find(user => user.userId === receiverId).id).emit('receiveFriendRequest', senderId);
+        console.log(`Đã gửi yêu cầu kết bạn từ ${senderId} tới ${receiverId}`);
+      }
+  })
 
   socket.on('acceptFriendRequest', ({ senderId, receiverId }) => {
     const senderSocket = onlineUsers.find(user => user.userId === senderId);
